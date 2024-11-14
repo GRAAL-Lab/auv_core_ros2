@@ -34,7 +34,7 @@ include_directories(${libconfig_INCLUDE_DIRS})
 find_library(SISL_LIBRARY NAMES sisl_toolbox)
 find_package(rclcpp_lifecycle REQUIRED)
 find_package(nav_msgs REQUIRED)
-find_package(mavros_msgs REQUIRED)
+
 
 # Add files in the tree of "Projects" view in QtCreator
 file(GLOB_RECURSE SOURCE_FILES
@@ -106,9 +106,13 @@ add_executable(kcl
     src/kcl/states/HoldState.cpp
     src/kcl/kcl/kcl_class.cpp
 )
+add_executable(interface
+    src/interface.cpp
+    src/interface/interface_class.cpp
+)
 
 # Setup dependencies and linking for each executable
-foreach(target kcl)
+foreach(target kcl interface)
   ament_target_dependencies(${target}
     rclcpp
     visualization_msgs
@@ -120,7 +124,6 @@ foreach(target kcl)
     auv_core_helper  # Ensure auv_core_helper dependency is added
     rclcpp_lifecycle
     nav_msgs
-    mavros_msgs
   )
   target_include_directories(${target} PRIVATE ${EIGEN3_INCLUDE_DIR})
 endforeach()
@@ -136,7 +139,7 @@ target_link_libraries(kcl
 )
 
 # Install the kcl executable
-install(TARGETS kcl
+install(TARGETS kcl interface
   DESTINATION lib/${PROJECT_NAME}
 )
 

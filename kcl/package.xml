@@ -3,12 +3,13 @@
 <package format="3">
   <name>kcl</name>
   <version>0.1.0</version>
-  <description>Kinematic control Layer for ROS2</description>
-  <maintainer email="youssef-attia@live.com">usflinux</maintainer>
-  <license>TODO: License declaration</license>
+  <description>Kinematic control Layer for ROS2 inculding it's interface</description>
+  <maintainer email="youssef.attia@edu.unige.it">usflinux</maintainer>
+  <license>MIT</license>
+  <author>Youssef Attia</author>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
-  <buildtool_depend>rosidl_default_generators</buildtool_depend> <!-- Needed for custom message generation -->
+  <buildtool_depend>rosidl_default_generators</buildtool_depend> 
 
   <depend>rclcpp</depend>
   <depend>tf2_ros</depend>
