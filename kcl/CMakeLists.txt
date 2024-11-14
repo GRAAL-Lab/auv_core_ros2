@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.8)
-project(kcl_ros2)
+project(kcl)
 
 # Set C++ Standard to C++17 directly
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Set build type to Debug for detailed compiler output
+# set(CMAKE_BUILD_TYPE RelWithDebInfo)
 set(CMAKE_BUILD_TYPE Debug)
 
 # Enable additional compiler warnings
@@ -20,7 +20,7 @@ find_package(geometry_msgs REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(builtin_interfaces REQUIRED)
 find_package(std_msgs REQUIRED)
-find_package(auv_msgs_ros2 REQUIRED)
+find_package(auv_core_helper REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(ament_index_cpp REQUIRED)
@@ -49,8 +49,14 @@ add_custom_target(.Files. SOURCES ${SOURCE_FILES})
 
 include_directories(
   include
-  ${auv_msgs_ros2_INCLUDE_DIRS}
+  ${auv_core_helper_INCLUDE_DIRS}  # Include directories for auv_core_helper
 )
+
+# After find_package(auv_core_helper REQUIRED)
+message(STATUS "auv_core_helper_LIBRARIES: ${auv_core_helper_LIBRARIES}")
+
+# Add the library directory to the linker search paths (if necessary)
+link_directories(${CMAKE_INSTALL_PREFIX}/auv_core_helper/lib)
 
 # Define a static library for states classes
 add_library(states_lib STATIC
@@ -68,7 +74,7 @@ target_include_directories(states_lib PUBLIC
 )
 ament_target_dependencies(states_lib
   Eigen3
-  auv_msgs_ros2
+  auv_core_helper
   ament_index_cpp
   rclcpp
   geometry_msgs
@@ -86,9 +92,10 @@ target_link_libraries(states_lib
   ${SISL_LIBRARY}
   ${IKCL_LIBRARY}
   ${CTRL_LIBRARY}
+  ${auv_core_helper_LIBRARIES}  # Link against auv_core_helper
 )
 
-# Define executables for various nodes with corrected paths
+# Define executables for various nodes
 add_executable(kcl
     src/kcl.cpp
     src/kcl/states/BaseAUVState.cpp
@@ -110,28 +117,33 @@ foreach(target kcl)
     Eigen3
     sensor_msgs
     tf2_geometry_msgs
-    auv_msgs_ros2
+    auv_core_helper  # Ensure auv_core_helper dependency is added
     rclcpp_lifecycle
     nav_msgs
     mavros_msgs
   )
-  target_include_directories(${target} PRIVATE ${EIGEN3_INCLUDE_DIR} ${auv_msgs_ros2_INCLUDE_DIRS})
+  target_include_directories(${target} PRIVATE ${EIGEN3_INCLUDE_DIR})
 endforeach()
 
 # Link libraries specific to executables
-target_link_libraries(kcl states_lib ${FSM_LIBRARY} ${RML_LIBRARY} ${SISL_LIBRARY} ${IKCL_LIBRARY} ${CTRL_LIBRARY})
+target_link_libraries(kcl
+  ${FSM_LIBRARY}
+  ${RML_LIBRARY}
+  ${SISL_LIBRARY}
+  ${IKCL_LIBRARY}
+  ${CTRL_LIBRARY}
+  ${auv_core_helper_LIBRARIES}  # Use exported variables
+)
 
-# Install directives for executables and libraries
+# Install the kcl executable
 install(TARGETS kcl
   DESTINATION lib/${PROJECT_NAME}
 )
 
-install(TARGETS states_lib 
-  DESTINATION lib/${PROJECT_NAME}
-)
-
+# Install headers and additional directories
 install(DIRECTORY include/
   DESTINATION include/
+  OPTIONAL
 )
 
 # Install additional directories
@@ -141,6 +153,7 @@ install(DIRECTORY
   models
   param
   DESTINATION share/${PROJECT_NAME}
+  OPTIONAL
 )
 
 if(BUILD_TESTING)

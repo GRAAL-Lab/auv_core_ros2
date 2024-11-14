@@ -36,15 +36,15 @@ KCL::KCL(const std::string& config_name) : Node("kcl_fsm_node") {
     joy_subscription_ = this->create_subscription<sensor_msgs::msg::Joy>("/joy", 1, std::bind(&KCL::JoyStickCallback, this, std::placeholders::_1));
     fsm_timer_ = this->create_wall_timer(100ms, std::bind(&KCL::executeFSM, this));
 
-    pose_actual_subscriber_ = this->create_subscription<auv_msgs_ros2::msg::PoseStamped>(auv_msgs_ros2::topicnames::pose_actual, 1, std::bind(&KCL::pose_actual_callback, this, _1));
-    velocity_actual_subscriber_ = this->create_subscription<geometry_msgs::msg::Twist>(auv_msgs_ros2::topicnames::velocity_actual, 1, std::bind(&KCL::velocity_actual_callback, this, _1));
-    acceleration_actual_subscriber_ = this->create_subscription<geometry_msgs::msg::Twist>(auv_msgs_ros2::topicnames::acceleration_actual, 1, std::bind(&KCL::acceleration_actual_callback, this, _1));
+    pose_actual_subscriber_ = this->create_subscription<auv_core_helper::msg::PoseStamped>(auv_core_helper::topicnames::pose_actual, 1, std::bind(&KCL::pose_actual_callback, this, _1));
+    velocity_actual_subscriber_ = this->create_subscription<geometry_msgs::msg::Twist>(auv_core_helper::topicnames::velocity_actual, 1, std::bind(&KCL::velocity_actual_callback, this, _1));
+    acceleration_actual_subscriber_ = this->create_subscription<geometry_msgs::msg::Twist>(auv_core_helper::topicnames::acceleration_actual, 1, std::bind(&KCL::acceleration_actual_callback, this, _1));
 
-    pose_goal_publisher_ = this->create_publisher<auv_msgs_ros2::msg::PoseStamped>(auv_msgs_ros2::topicnames::pose_goal, 1);
-    velocity_desired_publisher_ = this->create_publisher<geometry_msgs::msg::Twist>(auv_msgs_ros2::topicnames::velocity_desired, 1);
+    pose_goal_publisher_ = this->create_publisher<auv_core_helper::msg::PoseStamped>(auv_core_helper::topicnames::pose_goal, 1);
+    velocity_desired_publisher_ = this->create_publisher<geometry_msgs::msg::Twist>(auv_core_helper::topicnames::velocity_desired, 1);
 
-    control_command_service_ = this->create_service<auv_msgs_ros2::srv::ControlCommand>(auv_msgs_ros2::topicnames::control_cmd_service, std::bind(&KCL::handleControlCommand, this, _1, _2));
-    state_publisher_ = this->create_publisher<std_msgs::msg::String>(auv_msgs_ros2::topicnames::kcl_state, 1);
+    control_command_service_ = this->create_service<auv_core_helper::srv::ControlCommand>(auv_core_helper::topicnames::control_cmd_service, std::bind(&KCL::handleControlCommand, this, _1, _2));
+    state_publisher_ = this->create_publisher<std_msgs::msg::String>(auv_core_helper::topicnames::kcl_state, 1);
 
     path_publisher_ = this->create_publisher<nav_msgs::msg::Path>("planned_path", 1);
 }
@@ -147,7 +147,7 @@ void KCL::JoyStickCallback(const sensor_msgs::msg::Joy::SharedPtr msg) {
     mapJoystickToVelocity(msg->axes, &ctrlData_->joystick_velocity_desired_);
 }
 
-void KCL::pose_actual_callback(const auv_msgs_ros2::msg::PoseStamped::SharedPtr msg) {
+void KCL::pose_actual_callback(const auv_core_helper::msg::PoseStamped::SharedPtr msg) {
     ctrlData_->pose_actual_ << msg->x, msg->y, msg->z, msg->roll, msg->pitch, msg->yaw;
     ctrlData_->time_actual_ = msg->header.stamp;
 }
@@ -160,7 +160,7 @@ void KCL::acceleration_actual_callback(const geometry_msgs::msg::Twist::SharedPt
     ctrlData_->acceleration_actual_ << msg->linear.x, msg->linear.y, msg->linear.z, msg->angular.x, msg->angular.y, msg->angular.z;
 }
 
-void KCL::handleControlCommand(const std::shared_ptr<auv_msgs_ros2::srv::ControlCommand::Request> request, std::shared_ptr<auv_msgs_ros2::srv::ControlCommand::Response> response) {
+void KCL::handleControlCommand(const std::shared_ptr<auv_core_helper::srv::ControlCommand::Request> request, std::shared_ptr<auv_core_helper::srv::ControlCommand::Response> response) {
     if (request->state == States::TRAJECTORY_FOLLOWING) {
         ctrlData_->pose_goal_ = {request->x, request->y, request->z, request->roll, request->pitch, request->yaw};
         ctrlData_->TP_goal_time_ = request->time_to_reach;

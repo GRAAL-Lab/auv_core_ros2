@@ -3,7 +3,7 @@
 
 #include <string>
 
-namespace auv_msgs {
+namespace auv_core_helper {
 
 namespace topicnames {
 

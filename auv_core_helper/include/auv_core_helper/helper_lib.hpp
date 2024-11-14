@@ -9,6 +9,7 @@
 #include <geometry_msgs/msg/twist.hpp>
 #include <libconfig.h++>
 #include <ament_index_cpp/get_package_share_directory.hpp>
+#include <filesystem> 
 
 //using namespace Eigen;
 
@@ -35,4 +36,5 @@ qpOASES::real_t* convertEigenToQpOASESArray(const Eigen::MatrixBase<Derived>& m)
 void publish_Eigen_pose(const rclcpp::Publisher<auv_core_helper::msg::PoseStamped>::SharedPtr& publisher, const Eigen::Matrix<double, 6, 1>& pose, const rclcpp::Time& time);
 void publish_Eigen_velocity(const rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr& publisher, const Eigen::Matrix<double, 6, 1>& velocity);
 void publish_Eigen_acceleration(const rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr& publisher, const Eigen::Matrix<double, 6, 1>& acceleration);
+void mapJoystickToVelocity(const std::vector<float>& axes, geometry_msgs::msg::Twist* velocity_desired);
 #endif // HELPER_LIB_HPP
