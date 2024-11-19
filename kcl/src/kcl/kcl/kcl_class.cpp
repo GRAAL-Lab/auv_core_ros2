@@ -59,7 +59,7 @@ KCL::KCL(const std::string& configName)
     // Create service for control commands
     controlCommandService_ = this->create_service<auv_core_helper::srv::ControlCommand>(
         auv_core_helper::topicnames::control_cmd_service,
-        std::bind(&KCL::handleControlCommand, this, std::placeholders::_1, std::placeholders::_2));
+        std::bind(&KCL::HandleControlCommand, this, std::placeholders::_1, std::placeholders::_2));
 }
 
 void KCL::JoyStickCallback(const sensor_msgs::msg::Joy::SharedPtr msg) {
@@ -85,7 +85,7 @@ void KCL::AccelerationActualCallback(const geometry_msgs::msg::Twist::SharedPtr 
                                        msg->angular.x, msg->angular.y, msg->angular.z;
 }
 
-void KCL::handleControlCommand(
+void KCL::HandleControlCommand(
     const std::shared_ptr<auv_core_helper::srv::ControlCommand::Request> request,
     std::shared_ptr<auv_core_helper::srv::ControlCommand::Response> response) {
     // Handle different control states

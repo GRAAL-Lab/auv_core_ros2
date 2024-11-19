@@ -103,7 +103,7 @@ private:
     void AccelerationActualCallback(const geometry_msgs::msg::Twist::SharedPtr msg);
 
     /// Service callback to handle control commands.
-    void handleControlCommand(
+    void HandleControlCommand(
         const std::shared_ptr<auv_core_helper::srv::ControlCommand::Request> request,
         std::shared_ptr<auv_core_helper::srv::ControlCommand::Response> response);
 };
