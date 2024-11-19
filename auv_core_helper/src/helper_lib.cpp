@@ -266,7 +266,7 @@ void LoadParamsFromConf(const std::string& config_name, double* m, Eigen::Vector
 
 
 
-void publish_Eigen_pose(const rclcpp::Publisher<auv_core_helper::msg::PoseStamped>::SharedPtr& publisher, const Eigen::Matrix<double, 6, 1>& pose, const rclcpp::Time& time) {
+void PublishEigenPose(const rclcpp::Publisher<auv_core_helper::msg::PoseStamped>::SharedPtr& publisher, const Eigen::Matrix<double, 6, 1>& pose, const rclcpp::Time& time) {
     auto message = std::make_unique<auv_core_helper::msg::PoseStamped>();
     message->header.stamp = time;
     message->x = pose(0);
@@ -278,7 +278,7 @@ void publish_Eigen_pose(const rclcpp::Publisher<auv_core_helper::msg::PoseStampe
 
     publisher->publish(std::move(message));
 }
-void publish_Eigen_velocity(const rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr& publisher, const Eigen::Matrix<double, 6, 1>& velocity) {
+void PublishEigenVelocity(const rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr& publisher, const Eigen::Matrix<double, 6, 1>& velocity) {
     auto message = std::make_unique<geometry_msgs::msg::Twist>();
     message->linear.x = velocity(0);
     message->linear.y = velocity(1);
@@ -288,7 +288,7 @@ void publish_Eigen_velocity(const rclcpp::Publisher<geometry_msgs::msg::Twist>::
     message->angular.z = velocity(5);
     publisher->publish(std::move(message));
 }
-void publish_Eigen_acceleration(const rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr& publisher, const Eigen::Matrix<double, 6, 1>& acceleration) {   
+void PublishEigenAcceleration(const rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr& publisher, const Eigen::Matrix<double, 6, 1>& acceleration) {   
     auto message = std::make_unique<geometry_msgs::msg::Twist>();
     message->linear.x = acceleration(0);
     message->linear.y = acceleration(1);
@@ -300,7 +300,7 @@ void publish_Eigen_acceleration(const rclcpp::Publisher<geometry_msgs::msg::Twis
 }
 
 //TO DO: MOVE TO KCL JOYSTICK STATE AND ADD CALIBRATION!
-void mapJoystickToVelocity(const std::vector<float>& axes, geometry_msgs::msg::Twist* velocity_desired) {
+void MapJoystickToVelocity(const std::vector<float>& axes, geometry_msgs::msg::Twist* velocity_desired) {
     if (axes.size() < 6) return; // Ensure there are enough axes
 
     // Linear velocities based on joystick input

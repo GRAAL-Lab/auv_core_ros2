@@ -1,6 +1,5 @@
 #include "states/TrajectoryPlanningState.hpp"
-#include <iostream>
-#include <Eigen/Dense>
+
 
 
 // Constructor

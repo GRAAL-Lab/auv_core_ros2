@@ -1,7 +1,6 @@
 #pragma once
 
 #include "states/BaseAUVState.hpp"
-#include <Eigen/Dense>
 
 class TrajectoryPlanningState : public BaseAUVState {
 private:

@@ -1,16 +1,24 @@
 #pragma once
 
+// Standard library headers
 #include <memory>
+#include <string>
+
+// ROS 2 headers
 #include <rclcpp/rclcpp.hpp>
-#include <fsm/fsm.h>
+#include <sensor_msgs/msg/joy.hpp>
+#include <geometry_msgs/msg/twist.hpp>
+#include <std_msgs/msg/string.hpp>
+#include <nav_msgs/msg/path.hpp>
+
+// AUV-specific headers
 #include "kcl/data_structs.hpp"
+#include "fsm/fsm.h"
 #include "auv_core_helper/srv/control_command.hpp"
 #include "auv_core_helper/msg/pose_stamped.hpp"
-#include "sensor_msgs/msg/joy.hpp"
-#include "geometry_msgs/msg/twist.hpp"
-#include "std_msgs/msg/string.hpp"
+#include "auv_core_helper/helper_lib.hpp"
 
-// Include state headers
+// State headers
 #include "states/BaseAUVState.hpp"
 #include "states/IdleState.hpp"
 #include "states/HoldState.hpp"
@@ -18,49 +26,84 @@
 #include "states/TrajectoryPlanningState.hpp"
 #include "states/PathPlanningState.hpp"
 #include "states/commands.hpp"
-#include "nav_msgs/msg/path.hpp"
+
+// AUV-specific topic names
 #include "auv_msgs_ros2/topicnames.hpp"
-#include "auv_core_helper/helper_lib.hpp"
-
-
-
-
-using namespace std::chrono_literals;
-using namespace std::placeholders;
 
 class KCL : public rclcpp::Node {
 public:
-    KCL(const std::string& config_name);
+    explicit KCL(const std::string& configName);
+
+    /// Executes the FSM by running the state transitions and actions.
     void executeFSM();
+
 private:
-    fsm::FSM fsm_;
+    // --------------------
+    // Finite State Machine
+    // --------------------
+    fsm::FSM fsm_; ///< The finite state machine instance.
+
+    // State objects
     std::unique_ptr<IdleState> idleState_;
     std::unique_ptr<HoldState> holdState_;
     std::unique_ptr<JoystickState> joystickState_;
     std::unique_ptr<TrajectoryPlanningState> trajectoryPlanningState_;
     std::unique_ptr<PathPlanningState> pathPlanningState_;
 
+    // --------------------
+    // ROS 2 Publishers
+    // --------------------
+    rclcpp::Publisher<auv_core_helper::msg::PoseStamped>::SharedPtr poseGoalPublisher_;
+    rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr velocityDesiredPublisher_;
+    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr statePublisher_;
+    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pathPublisher_;
+
+    // --------------------
+    // ROS 2 Subscriptions
+    // --------------------
+    rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joystickSubscription_;
+    rclcpp::Subscription<auv_core_helper::msg::PoseStamped>::SharedPtr poseActualSubscription_;
+    rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr velocityActualSubscription_;
+    rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr accelerationActualSubscription_;
+
+    // --------------------
+    // ROS 2 Services
+    // --------------------
+    rclcpp::Service<auv_core_helper::srv::ControlCommand>::SharedPtr controlCommandService_;
+
+    // ROS 2 Client
     rclcpp::Client<auv_core_helper::srv::ControlCommand>::SharedPtr client_;
-    rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_subscription_;
 
-    rclcpp::Publisher<auv_core_helper::msg::PoseStamped>::SharedPtr pose_goal_publisher_;
-    rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr velocity_desired_publisher_;
-    rclcpp::TimerBase::SharedPtr fsm_timer_;
-    rclcpp::Subscription<auv_core_helper::msg::PoseStamped>::SharedPtr pose_actual_subscriber_;
-    rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr velocity_actual_subscriber_;
-    rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr acceleration_actual_subscriber_;
+    // --------------------
+    // Timer
+    // --------------------
+    rclcpp::TimerBase::SharedPtr fsmTimer_;
 
-    rclcpp::Service<auv_core_helper::srv::ControlCommand>::SharedPtr control_command_service_;
-    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr state_publisher_;
+    // --------------------
+    // Shared Data
+    // --------------------
+    std::shared_ptr<auv::ControlData> ctrlData_; ///< Shared pointer to the control data struct.
 
-    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_publisher_;
+    // --------------------
+    // Private Functions
+    // --------------------
+    /// Set up FSM transitions and state machine logic.
+    void SetupTransitions();
 
-    std::shared_ptr<auv::ControlData> ctrlData_; //shared pointer to control data struct
-
-    void setupTransitions();
+    /// Callback for joystick input.
     void JoyStickCallback(const sensor_msgs::msg::Joy::SharedPtr msg);
-    void pose_actual_callback(const auv_core_helper::msg::PoseStamped::SharedPtr msg);
-    void velocity_actual_callback(const geometry_msgs::msg::Twist::SharedPtr msg);
-    void acceleration_actual_callback(const geometry_msgs::msg::Twist::SharedPtr msg);
-    void handleControlCommand(const std::shared_ptr<auv_core_helper::srv::ControlCommand::Request> request, std::shared_ptr<auv_core_helper::srv::ControlCommand::Response> response);
+    
+    /// Callback for actual pose data.
+    void PoseActualCallback(const auv_core_helper::msg::PoseStamped::SharedPtr msg);
+    
+    /// Callback for actual velocity data.
+    void VelocityActualCallback(const geometry_msgs::msg::Twist::SharedPtr msg);
+    
+    /// Callback for actual acceleration data.
+    void AccelerationActualCallback(const geometry_msgs::msg::Twist::SharedPtr msg);
+
+    /// Service callback to handle control commands.
+    void handleControlCommand(
+        const std::shared_ptr<auv_core_helper::srv::ControlCommand::Request> request,
+        std::shared_ptr<auv_core_helper::srv::ControlCommand::Response> response);
 };
