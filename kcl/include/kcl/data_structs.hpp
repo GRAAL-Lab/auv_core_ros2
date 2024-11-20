@@ -16,17 +16,18 @@ struct ControlData {
     // ------------------------------
     // State Information
     // ------------------------------
-    Eigen::Matrix<double, 6, 1> poseActual; ///< Current AUV pose (x, y, z, roll, pitch, yaw).
+
+    Eigen::VectorXd poseActual = Eigen::VectorXd(6); ///< Current AUV pose (x, y, z, roll, pitch, yaw).
     rclcpp::Time timeActual;               ///< Timestamp for the current pose.
-    Eigen::Matrix<double, 6, 1> velocityActual; ///< Current linear and angular velocities.
-    Eigen::Matrix<double, 6, 1> accelerationActual; ///< Current linear and angular accelerations.
+    Eigen::VectorXd velocityActual = Eigen::VectorXd(6); ///< Current linear and angular velocities.
+    Eigen::VectorXd accelerationActual = Eigen::VectorXd(6); ///< Current linear and angular accelerations.
 
     // ------------------------------
     // Desired State
     // ------------------------------
-    Eigen::Matrix<double, 6, 1> velocityDesired; ///< Desired linear and angular velocities.
+    Eigen::VectorXd velocityDesired = Eigen::VectorXd(6); ///< Desired linear and angular velocities.
     geometry_msgs::msg::Twist joystickVelocityDesired; ///< Joystick-derived velocity commands.
-    Eigen::Matrix<double, 6, 1> poseGoal = Eigen::Matrix<double, 6, 1>::Zero(); ///< Desired pose goal.
+    Eigen::VectorXd poseGoal = Eigen::VectorXd(6); ///< Desired pose goal.
     double tpGoalTime = 0.0; ///< Time to reach the trajectory planning goal.
 
     // ------------------------------
@@ -84,6 +85,7 @@ struct ControlData {
         velocityActual.setZero();
         accelerationActual.setZero();
         velocityDesired.setZero();
+        poseGoal.setZero();
         maxVelocity.setConstant(1.0); // Default maximum velocities.
         minVelocity.setConstant(0.0); // Default minimum velocities.
     }

@@ -92,7 +92,7 @@ void KCL::HandleControlCommand(
 
     // Handle different control states
     if (request->state == States::TRAJECTORY_FOLLOWING) {
-        ctrlData_->poseGoal = {request->x, request->y, request->z, request->roll, request->pitch, request->yaw};
+        ctrlData_->poseGoal << request->x, request->y, request->z, request->roll, request->pitch, request->yaw;
         ctrlData_->tpGoalTime = request->time_to_reach;
     } else if (request->state == States::PATH_FOLLOWING) {
         ctrlData_->pathPlanningMode = request->path_planning_2d_3d	;
@@ -199,10 +199,8 @@ void KCL::ExecuteFSM() {
     // Publish goal pose
     PublishEigenPose(poseGoalPublisher_, ctrlData_->poseGoal, this->get_clock()->now());
 
-    // Final clamping of velocities
-    for (int i = 0; i < 6; ++i) {
-        ctrlData_->velocityDesired[i] = std::clamp(ctrlData_->velocityDesired[i], ctrlData_->minVelocity[i], ctrlData_->maxVelocity[i]);
-    }
+    // Scale desired velocity within limits
+    rml::SaturateVectorWithinLimits(ctrlData_->maxVelocity, ctrlData_->minVelocity, ctrlData_->velocityDesired);
 
     // Publish desired velocity
     PublishEigenVelocity(velocityDesiredPublisher_, ctrlData_->velocityDesired);

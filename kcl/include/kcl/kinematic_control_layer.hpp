@@ -13,7 +13,6 @@
 
 // AUV-specific headers
 #include "kcl/data_structs.hpp"
-#include "fsm/fsm.h"
 #include "auv_core_helper/srv/control_command.hpp"
 #include "auv_core_helper/msg/pose_stamped.hpp"
 #include "auv_core_helper/helper_lib.hpp"
@@ -29,6 +28,10 @@
 
 // AUV-specific topic names
 #include "auv_msgs_ros2/topicnames.hpp"
+
+// Graal library 
+#include "fsm/fsm.h"
+#include "rml/Functions.h"
 
 class KCL : public rclcpp::Node {
 public:
