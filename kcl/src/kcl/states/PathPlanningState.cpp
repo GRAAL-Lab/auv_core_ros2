@@ -1,56 +1,42 @@
 #include "states/PathPlanningState.hpp"
-#include <rclcpp/rclcpp.hpp>
-#include <cmath>
-#include <filesystem>
-#include <limits>
 
 // Constructor
-PathPlanningState::PathPlanningState(fsm::FSM* fsm)
-    : BaseAUVState(fsm, "PATH_PLANNING") {}
+PathPlanningState::PathPlanningState(fsm::FSM* fsm) : BaseAUVState(fsm, "PATH_PLANNING") {
+}
 
-// OnEntry: Called when entering the path planning state
 fsm::retval PathPlanningState::OnEntry() noexcept {
     RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Entering PATH_PLANNING state");
-
-    // Retrieve home path and ensure directory exists
     std::string home_path = futils::get_homepath();
     std::filesystem::create_directories(home_path);
-
-    // Select path planning mode
-    if (ctrlData->path_planning_2d_3d == 3) {
-        RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Path Planning: 3D Helix");
-        path = sisl::PathFactory::NewHelicalPath(
-            ctrlData->helix_startPos, ctrlData->helix_axisPos, ctrlData->helix_axisDir,
-            ctrlData->helix_frequency, ctrlData->helix_numQuadrants, ctrlData->helix_counterClockwise);
-    } else if (ctrlData->path_planning_2d_3d == 1) {
-        RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Path Planning: 2D Serpentine");
-        if (ctrlData->serpentine_polygon_vertices_.empty()) {
-            RCLCPP_ERROR(rclcpp::get_logger("PathPlanningState"), "No polygon vertices provided for 2D serpentine path.");
+    if (ctrlData->pathPlanningMode == 3){
+        RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Path Planning Helix 3D");
+        path = sisl::PathFactory::NewHelicalPath(ctrlData->helixStartPos, ctrlData->helixAxisPos, ctrlData->helixAxisDir, ctrlData->helixFrequency, ctrlData->helixNumQuadrants, ctrlData->helixCounterClockwise);
+    }
+    else if (ctrlData->pathPlanningMode == 1){
+        RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Path Planning Serpentine 2D");
+        // Check if the polygon vertices are provided
+        if (ctrlData->serpentinePolygonVertices.empty()) {
             return fsm::fail;
         }
-        auto direction = ctrlData->serpentine_direction_ ? sisl::Path::Direction::Backward : sisl::Path::Direction::Forward;
-        path = sisl::PathFactory::NewSerpentine(
-            ctrlData->serpentine_angle_, direction, ctrlData->serpentine_offset_,
-            ctrlData->serpentine_polygon_vertices_);
-    } else if (ctrlData->path_planning_2d_3d == 2) {
-        RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Path Planning: 3D Serpentine");
-        if (ctrlData->serpentine_polygon_vertices_.empty()) {
-            RCLCPP_ERROR(rclcpp::get_logger("PathPlanningState"), "No polygon vertices provided for 3D serpentine path.");
+        // Determine the direction of the serpentine path
+        sisl::Path::Direction direction = ctrlData->serpentineDirection ? sisl::Path::Direction::Backward : sisl::Path::Direction::Forward;
+        path = sisl::PathFactory::NewSerpentine(ctrlData->serpentineAngle, direction, ctrlData->serpentineOffset, ctrlData->serpentinePolygonVertices);
+    }
+    else if (ctrlData->pathPlanningMode == 2){
+        RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Path Planning 3D Serpentine");
+        // Check if the polygon vertices are provided
+        if (ctrlData->serpentinePolygonVertices.empty()) {
             return fsm::fail;
         }
-        auto direction = ctrlData->serpentine_direction_ ? sisl::Path::Direction::Backward : sisl::Path::Direction::Forward;
-        path = sisl::PathFactory::New3DSerpentine(
-            ctrlData->serpentine_angle_, direction, ctrlData->serpentine_offset_,
-            ctrlData->serpentine_polygon_vertices_, ctrlData->dive_depth_,
-            ctrlData->curvature_, ctrlData->dip_num_points_, ctrlData->dive_length_);
+        // Determine the direction of the serpentine path
+        sisl::Path::Direction direction = ctrlData->serpentineDirection ? sisl::Path::Direction::Backward : sisl::Path::Direction::Forward;
+        path = sisl::PathFactory::New3DSerpentine(ctrlData->serpentineAngle, direction, ctrlData->serpentineOffset, ctrlData->serpentinePolygonVertices, ctrlData->diveDepth, ctrlData->curvature, ctrlData->dipNumPoints, ctrlData->diveLength);
     }
 
     if (!path) {
-        RCLCPP_ERROR(rclcpp::get_logger("PathPlanningState"), "Failed to create path.");
         isCurveSet_ = false;
         return fsm::fail;
     }
-
     // Sample and convert path to nav_msgs::Path
     auto sampledPointsSharedPtr = path->Sampling(1500);
     if (!sampledPointsSharedPtr || sampledPointsSharedPtr->empty()) {
@@ -70,204 +56,208 @@ fsm::retval PathPlanningState::OnEntry() noexcept {
         pose_stamped.pose.orientation.w = 1.0; // Identity quaternion
         nav_path.poses.push_back(pose_stamped);
     }
-    ctrlData->planned_path_ = nav_path;
-
-    // Save sampled points for debugging or visualization
-    PersistenceManager::SaveObj(path->Sampling(30000), home_path + "/path.txt");
+    ctrlData->plannedPath = nav_path;
+    isCurveSet_ = true;
+    RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Path set and vehicle is ready");
+    // PersistenceManager::SaveObj(path->Sampling(30000), home_path + "/path.txt");
 
     // Initialize PID controllers
-    initializePIDControllers();
+    ctb::PIDGains gainsX = {ctrlData->gainsX(0), ctrlData->gainsX(1), ctrlData->gainsX(2), ctrlData->gainsX(3), ctrlData->gainsX(4), ctrlData->gainsX(5)};
+    ctb::PIDGains gainsY = {ctrlData->gainsY(0), ctrlData->gainsY(1), ctrlData->gainsY(2), ctrlData->gainsY(3), ctrlData->gainsY(4), ctrlData->gainsY(5)};
+    ctb::PIDGains gainsZ = {ctrlData->gainsZ(0), ctrlData->gainsZ(1), ctrlData->gainsZ(2), ctrlData->gainsZ(3), ctrlData->gainsZ(4), ctrlData->gainsZ(5)};
+    ctb::PIDGains gainsRoll = {ctrlData->gainsRoll(0), ctrlData->gainsRoll(1), ctrlData->gainsRoll(2), ctrlData->gainsRoll(3), ctrlData->gainsRoll(4), ctrlData->gainsRoll(5)};
+    ctb::PIDGains gainsPitch = {ctrlData->gainsPitch(0), ctrlData->gainsPitch(1), ctrlData->gainsPitch(2), ctrlData->gainsPitch(3), ctrlData->gainsPitch(4), ctrlData->gainsPitch(5)};
+    ctb::PIDGains gainsYaw = {ctrlData->gainsYaw(0), ctrlData->gainsYaw(1), ctrlData->gainsYaw(2), ctrlData->gainsYaw(3), ctrlData->gainsYaw(4), ctrlData->gainsYaw(5)};
 
-    // Initialize other member variables
-    isCurveSet_ = true;
-    last_update_time = std::chrono::system_clock::now();
+    ctb::PIDGains gainsDelta = {0.0, 2.0, 0.0, 0.0, 0.0, 0.001};
+    pidX_.Initialize(gainsX, 0.0, 2); // Initialize the PID controller for longitudinal position
+    pidY_.Initialize(gainsY, 0.0, 2); // Initialize the PID controller for lateral position
+    pidZ_.Initialize(gainsZ, 0.0, 2); // Initialize the PID controller for depth position
+    pidRoll_.Initialize(gainsRoll, 0.0, 2); // Initialize the PID controller for roll
+    pidPitch_.Initialize(gainsPitch, 0.0, 2); // Initialize the PID controller for pitch
+    pidYaw_.Initialize(gainsYaw, 0.0, 2); // Initialize the PID controller for yaw
 
-    RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Path successfully created and vehicle is ready.");
+    pidDelta_.Initialize(gainsDelta, 0.001, 0.1); // Initialize the PID controller for delta
+
+    last_update_time = std::chrono::system_clock::now(); // Initialize time tracking
+
     return fsm::ok;
 }
 
-// Execute: Called repeatedly while in the path planning state
-fsm::retval PathPlanningState::Execute() noexcept {
+
+
+fsm::retval PathPlanningState::Execute() noexcept { 
+    static bool initial_time_set = false;
+    static rclcpp::Time previous_time;
+
     if (!isCurveSet_) {
-        RCLCPP_WARN(rclcpp::get_logger("PathPlanningState"), "Curve not set. Waiting...");
-        return fsm::ok;
+        RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Curve is not set. Waiting for curve to be set.");
+        return fsm::ok; // Keep trying in the next cycles
     }
 
-    if (!isVehicleOnPathDirection) {
-        // Align vehicle with initial path direction
-        alignVehicleToPath();
-        return fsm::ok;
+    // Check if the simulation time has been published
+    while (ctrlData->timeActual.nanoseconds() < 0) {
+        RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Waiting for simulation time to be published...");
+        return fsm::ok; // Keep trying in the next cycles
     }
 
-    // Update vehicle's goal position and orientation based on the path
-    updateVehicleGoal();
+    const auto& poses = ctrlData->plannedPath.poses;
 
+    if (!initial_time_set) {
+        previous_time = ctrlData->timeActual;
+        initial_time_set = true;
+    }
+
+    // Ensure the vehicle has reached the path and is aligned
+    if (!isVehicleOnPathDirection_) {
+        // Assuming 'poses' is a std::vector or similar container of poses with position and orientation data
+        Eigen::Vector3d firstPoint(poses[0].pose.position.x, poses[0].pose.position.y, poses[0].pose.position.z);
+        Eigen::Vector3d secondPoint(poses[1].pose.position.x, poses[1].pose.position.y, poses[1].pose.position.z);
+
+        // Calculate normalized direction vector
+        Eigen::Vector3d pathDirection = (secondPoint - firstPoint).normalized();
+
+        // Calculate yaw (rotation around z-axis)
+        double yawDirection = atan2(pathDirection.y(), pathDirection.x());
+
+        // Calculate pitch (rotation around y-axis, angle from horizontal plane)
+        double pitchDirection = -atan2(pathDirection.z(), sqrt(pathDirection.x() * pathDirection.x() + pathDirection.y() * pathDirection.y()));
+        // Prepare goal pose (translation and rotation)
+        Eigen::Matrix<double, 6, 1> poseGoal;
+        poseGoal << firstPoint.x(), firstPoint.y(), firstPoint.z(), 0, pitchDirection, yawDirection;
+        ctrlData->poseGoal = poseGoal;
+
+        // Compute errors and desired velocities for x, y, pitch, and yaw
+        positionXError_ = ctrlData->poseGoal(0) - ctrlData->poseActual(0);
+        positionYError_ = ctrlData->poseGoal(1) - ctrlData->poseActual(1);
+        positionZError_ = ctrlData->poseGoal(2) - ctrlData->poseActual(2);
+        rollError_ = ctrlData->poseGoal(3) - ctrlData->poseActual(3);
+        yawError_ = ctrlData->poseGoal(5) - ctrlData->poseActual(5);
+        pitchError_ = ctrlData->poseGoal(4) - ctrlData->poseActual(4);
+        ctb::NormalizeAngle(rollError_);
+        ctb::NormalizeAngle(yawError_);
+        ctb::NormalizeAngle(pitchError_);
+
+        // Set desired velocities
+        ctrlData->velocityDesired(0) = -pidX_.Compute(0, positionXError_);
+        ctrlData->velocityDesired(1) = -pidY_.Compute(0, positionYError_);
+        ctrlData->velocityDesired(2) = -pidZ_.Compute(0, positionZError_);
+        ctrlData->velocityDesired(3) = -pidRoll_.Compute(0, rollError_);
+        ctrlData->velocityDesired(4) = -pidPitch_.Compute(0, pitchError_);
+        ctrlData->velocityDesired(5) = -pidYaw_.Compute(0, yawError_);
+
+
+
+        // Check if vehicle has reached the starting point and aligned with path direction
+        if (positionXError_ < 0.1 && positionYError_ < 0.1 && positionZError_ < 0.1 && rollError_ < 0.1 && yawError_ < 0.1 && pitchError_ < 0.1){
+            RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Vehicle reached starting point and in direction of the path");
+                ctrlData->velocityDesired.setZero();
+                isVehicleOnPathDirection_ = true;
+        }
+
+    }
+    else {
+        double intervalEnd = std::min(currentAbscissa_ + delta_, path->EndParameter());
+        closestPointAbscissa_ = path->FindAbscissaClosestPointOnInterval(ctrlData->poseActual.head(3), currentAbscissa_, intervalEnd);
+
+        Eigen::Vector3d currentPoint = path->At(closestPointAbscissa_); // returns x,y coordinates (UTM) of the goal position
+        double goalAbscissa = closestPointAbscissa_ + delta_; // delta should be set to 1 initially, can be adjusted dynamically later
+        goalAbscissa = std::clamp(goalAbscissa, path->StartParameter(), path->EndParameter());
+        Eigen::Vector3d nextPoint = path->At(goalAbscissa); // returns x,y coordinates (UTM) of the goal position
+
+        // Calculate the direction vector
+        Eigen::Vector3d direction = (nextPoint - currentPoint).normalized();
+        double pi_h = atan2(direction.y(), direction.x());
+        // Calculate the pitch angle
+        double pi_p = -atan2(direction.z(), sqrt(direction.x() * direction.x() + direction.y() * direction.y()));
+
+
+        // Calculate cross-track error
+        double psi_d = pi_h;
+        double theta_psi_d = pi_p;
+        pi_p = std::clamp(pi_p, -0.610865, 0.610865);
+        updateHeadingPitch(ctrlData->poseActual.head(3), nextPoint, currentPoint, delta_, epsilon, psi_d, theta_psi_d, crossTrackError_, verticalTrackError_);
+        if (ctrlData->pathPlanningMode == 1){
+            theta_psi_d = pi_p;
+        }
+        theta_psi_d = std::clamp(theta_psi_d, -0.610865, 0.610865);
+
+        // Update the goal position and orientation
+        ctrlData->poseGoal(0) = nextPoint.x(); // x coordinate
+        ctrlData->poseGoal(1) = nextPoint.y(); // y coordinate
+        ctrlData->poseGoal(2) = nextPoint.z(); // z coordinate
+        ctrlData->poseGoal(3) = 0; // roll
+        //ALOS OFF
+        ctrlData->poseGoal(4) = pi_p; // pitch
+        ctrlData->poseGoal(5) = pi_h; // yaw
+
+        // ALOS ON
+        // ctrlData->poseGoal(4) = theta_psi_d;
+        // ctrlData->poseGoal(5) = psi_d;
+
+
+        // Compute errors and desired velocities for x, y, pitch, and yaw
+        positionXError_ = ctrlData->poseGoal(0) - ctrlData->poseActual(0);
+        positionYError_ = ctrlData->poseGoal(1) - ctrlData->poseActual(1);
+        positionZError_ = ctrlData->poseGoal(2) - ctrlData->poseActual(2);
+        rollError_ = ctrlData->poseGoal(3) - ctrlData->poseActual(3);
+        yawError_ = ctrlData->poseGoal(5) - ctrlData->poseActual(5);
+        pitchError_ = ctrlData->poseGoal(4) - ctrlData->poseActual(4);
+        ctb::NormalizeAngle(rollError_);
+        ctb::NormalizeAngle(yawError_);
+        ctb::NormalizeAngle(pitchError_);
+
+
+        ctrlData->velocityDesired(0) = -pidX_.Compute(0, positionXError_);
+        ctrlData->velocityDesired(1) = -pidY_.Compute(0, positionYError_);
+        ctrlData->velocityDesired(2) = -pidZ_.Compute(0, positionZError_);
+        ctrlData->velocityDesired(3) = -pidRoll_.Compute(0, rollError_);
+        ctrlData->velocityDesired(4) = -pidPitch_.Compute(0, pitchError_);
+        ctrlData->velocityDesired(5) = -pidYaw_.Compute(0, yawError_);
+
+        // Evaluate derivatives at points of interest
+        Eigen::Vector3d currentPosDot = path->Derivate(1, closestPointAbscissa_).front();
+        Eigen::Vector3d goalPosDot = path->Derivate(1, goalAbscissa).front();
+
+        // Normalize the direction vectors
+        Eigen::Vector3d currentDirection = currentPosDot / currentPosDot.norm();
+        Eigen::Vector3d goalDirection = goalPosDot / goalPosDot.norm();
+
+        // Evaluate tangent difference norm. double showing how much the vehicle is aligned with the path direction but not if the path is changing
+        double tangentsDifferenceNorm = (goalDirection - currentDirection).norm();
+
+
+        double baseSetpoint = deltaMax_;
+        double errorMagnitude = (10.0 * fabs(crossTrackError_)) + (10.0 * fabs(verticalTrackError_)) + (30.0 * fabs(tangentsDifferenceNorm));
+        double IOutput = pidDelta_.Compute(baseSetpoint - errorMagnitude, delta_);
+        delta_ += IOutput; // Scale the PID output to modulate the control response
+
+        delta_ = std::clamp(delta_, deltaMin_, deltaMax_);
+        RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Delta: %f", delta_);
+        RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Time: %f", ctrlData->timeActual.seconds());
+        //compute how much of path is completed in %
+        double path_completed = (closestPointAbscissa_ / path->EndParameter()) * 100;
+        RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Path completed: %f", path_completed);
+
+        // Update the current abscissa to the abscissa of the closest point, preparing for the next update cycle
+        currentAbscissa_ = closestPointAbscissa_;
+        if (currentAbscissa_ >= path->EndParameter()) {// this has an segmentation error when path has finished, check it
+            RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Path has ended");
+            fsm_->SetNextState(States::HOLD);
+        }
+
+    }
     return fsm::ok;
 }
 
-// OnExit: Called when exiting the path planning state
+
 fsm::retval PathPlanningState::OnExit() noexcept {
-    ctrlData->planned_path_.poses.clear();
-    isVehicleOnPathDirection = false;
-    closestPointAbscissa = 0.0;
+    ctrlData->plannedPath.poses.clear();
+    isVehicleOnPathDirection_ = false;
+    closestPointAbscissa_ = 0.0;
     currentAbscissa_ = 0.0;
-    RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Exiting PATH_PLANNING state.");
     return fsm::ok;
 }
-
-// Initialize PID controllers
-void PathPlanningState::initializePIDControllers() {
-    ctb::PIDGains gainsX = {ctrlData->gainsX_(0), ctrlData->gainsX_(1), ctrlData->gainsX_(2)};
-    ctb::PIDGains gainsY = {ctrlData->gainsY_(0), ctrlData->gainsY_(1), ctrlData->gainsY_(2)};
-    ctb::PIDGains gainsZ = {ctrlData->gainsZ_(0), ctrlData->gainsZ_(1), ctrlData->gainsZ_(2)};
-    ctb::PIDGains gainsRoll = {ctrlData->gainsRoll_(0), ctrlData->gainsRoll_(1), ctrlData->gainsRoll_(2)};
-    ctb::PIDGains gainsPitch = {ctrlData->gainsPitch_(0), ctrlData->gainsPitch_(1), ctrlData->gainsPitch_(2)};
-    ctb::PIDGains gainsYaw = {ctrlData->gainsYaw_(0), ctrlData->gainsYaw_(1), ctrlData->gainsYaw_(2)};
-    ctb::PIDGains gainsDelta = {0.0, 2.0, 0.0};
-
-    pidX.Initialize(gainsX, 0.0, 2.0);
-    pidY.Initialize(gainsY, 0.0, 2.0);
-    pidZ.Initialize(gainsZ, 0.0, 2.0);
-    pidRoll.Initialize(gainsRoll, 0.0, 2.0);
-    pidPitch.Initialize(gainsPitch, 0.0, 2.0);
-    pidYaw.Initialize(gainsYaw, 0.0, 2.0);
-    pidDelta.Initialize(gainsDelta, 0.001, 0.1);
-
-    RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "PID controllers initialized.");
-}
-
-// Align vehicle with the initial direction of the path
-void PathPlanningState::alignVehicleToPath() {
-    const auto& poses = ctrlData->planned_path_.poses;
-
-    if (poses.empty()) {
-        RCLCPP_ERROR(rclcpp::get_logger("PathPlanningState"), "Planned path is empty.");
-        return;
-    }
-
-    Eigen::Vector3d firstPoint(poses[0].pose.position.x, poses[0].pose.position.y, poses[0].pose.position.z);
-    Eigen::Vector3d secondPoint(poses[1].pose.position.x, poses[1].pose.position.y, poses[1].pose.position.z);
-
-    Eigen::Vector3d pathDirection = (secondPoint - firstPoint).normalized();
-    double yawDirection = atan2(pathDirection.y(), pathDirection.x());
-    double pitchDirection = -atan2(pathDirection.z(), sqrt(pathDirection.x() * pathDirection.x() + pathDirection.y() * pathDirection.y()));
-
-    ctrlData->pose_goal_ << firstPoint.x(), firstPoint.y(), firstPoint.z(), 0.0, pitchDirection, yawDirection;
-
-    double xError = ctrlData->pose_goal_(0) - ctrlData->pose_actual_(0);
-    double yError = ctrlData->pose_goal_(1) - ctrlData->pose_actual_(1);
-    double zError = ctrlData->pose_goal_(2) - ctrlData->pose_actual_(2);
-
-    if (fabs(xError) < 0.1 && fabs(yError) < 0.1 && fabs(zError) < 0.1) {
-        RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Vehicle aligned with path direction.");
-        isVehicleOnPathDirection = true;
-    }
-}
-
-// Update the vehicle's goal position and orientation along the path
-void PathPlanningState::updateVehicleGoal() {
-    if (!path) {
-        RCLCPP_ERROR(rclcpp::get_logger("PathPlanningState"), "Path is null. Unable to update vehicle goal.");
-        return;
-    }
-
-    // Compute the interval for finding the closest point
-    double intervalEnd = std::min(currentAbscissa_ + delta, path->EndParameter());
-    closestPointAbscissa = path->FindAbscissaClosestPointOnInterval(ctrlData->pose_actual_.head(3), currentAbscissa_, intervalEnd);
-
-    Eigen::Vector3d currentPoint = path->At(closestPointAbscissa); // Closest point on the path
-    double goalAbscissa = closestPointAbscissa + delta;           // Look-ahead goal point
-    goalAbscissa = std::clamp(goalAbscissa, path->StartParameter(), path->EndParameter());
-    Eigen::Vector3d nextPoint = path->At(goalAbscissa);           // Next goal point on the path
-
-    // Calculate the direction vector from the closest point to the next point
-    Eigen::Vector3d direction = (nextPoint - currentPoint).normalized();
-
-    // Calculate desired heading (yaw) and pitch angles
-    double desiredHeading = atan2(direction.y(), direction.x());
-    double desiredPitch = -atan2(direction.z(), sqrt(direction.x() * direction.x() + direction.y() * direction.y()));
-
-    // Limit pitch to avoid extreme angles
-    desiredPitch = std::clamp(desiredPitch, -0.610865, 0.610865); // ±35 degrees in radians
-
-    // Calculate cross-track and vertical-track errors
-    updateHeadingPitch(
-        ctrlData->pose_actual_.head(3), nextPoint, currentPoint,
-        delta, epsilon, desiredHeading, desiredPitch, crossTrackError, verticalTrackError);
-
-    if (ctrlData->path_planning_2d_3d == 1) { // 2D serpentine mode
-        desiredPitch = 0.0; // Ensure pitch remains zero for 2D paths
-    }
-
-    // Limit adjusted pitch angle
-    desiredPitch = std::clamp(desiredPitch, -0.610865, 0.610865); // ±35 degrees in radians
-
-    // Update the goal pose
-    ctrlData->pose_goal_(0) = nextPoint.x();  // X coordinate
-    ctrlData->pose_goal_(1) = nextPoint.y();  // Y coordinate
-    ctrlData->pose_goal_(2) = nextPoint.z();  // Z coordinate
-    ctrlData->pose_goal_(3) = 0.0;            // Roll
-    ctrlData->pose_goal_(4) = desiredPitch;   // Pitch
-    ctrlData->pose_goal_(5) = desiredHeading; // Yaw
-
-    // Compute errors in position and orientation
-    positionXError = ctrlData->pose_goal_(0) - ctrlData->pose_actual_(0);
-    positionYError = ctrlData->pose_goal_(1) - ctrlData->pose_actual_(1);
-    positionZError = ctrlData->pose_goal_(2) - ctrlData->pose_actual_(2);
-    rollError = ctrlData->pose_goal_(3) - ctrlData->pose_actual_(3);
-    yawError = ctrlData->pose_goal_(5) - ctrlData->pose_actual_(5);
-    pitchError = ctrlData->pose_goal_(4) - ctrlData->pose_actual_(4);
-
-    // Normalize angular errors
-    ctb::NormalizeAngle(rollError);
-    ctb::NormalizeAngle(yawError);
-    ctb::NormalizeAngle(pitchError);
-
-    // Log errors for debugging
-    RCLCPP_DEBUG(rclcpp::get_logger("PathPlanningState"),
-                 "Position Errors: X=%.3f, Y=%.3f, Z=%.3f | Angular Errors: Roll=%.3f, Pitch=%.3f, Yaw=%.3f",
-                 positionXError, positionYError, positionZError, rollError, pitchError, yawError);
-
-    // Update desired velocities using PID controllers
-    ctrlData->velocity_desired_(0) = -pidX.Compute(0, positionXError); // Longitudinal velocity
-    ctrlData->velocity_desired_(1) = -pidY.Compute(0, positionYError); // Lateral velocity
-    ctrlData->velocity_desired_(2) = -pidZ.Compute(0, positionZError); // Depth velocity
-    ctrlData->velocity_desired_(3) = -pidRoll.Compute(0, rollError);   // Roll angular velocity
-    ctrlData->velocity_desired_(4) = -pidPitch.Compute(0, pitchError); // Pitch angular velocity
-    ctrlData->velocity_desired_(5) = -pidYaw.Compute(0, yawError);     // Yaw angular velocity
-
-    // Evaluate derivatives to check alignment and dynamic path-following behavior
-    Eigen::Vector3d currentPosDot = path->Derivate(1, closestPointAbscissa).front();
-    Eigen::Vector3d goalPosDot = path->Derivate(1, goalAbscissa).front();
-
-    Eigen::Vector3d currentDirection = currentPosDot / currentPosDot.norm();
-    Eigen::Vector3d goalDirection = goalPosDot / goalPosDot.norm();
-
-    double tangentsDifferenceNorm = (goalDirection - currentDirection).norm();
-
-    // Adjust delta dynamically based on errors
-    double baseSetpoint = deltaMax;
-    double errorMagnitude = (10.0 * fabs(crossTrackError)) + (10.0 * fabs(verticalTrackError)) + (30.0 * fabs(tangentsDifferenceNorm));
-    double IOutput = pidDelta.Compute(baseSetpoint - errorMagnitude, delta);
-    delta += IOutput;
-    delta = std::clamp(delta, deltaMin, deltaMax);
-
-    RCLCPP_DEBUG(rclcpp::get_logger("PathPlanningState"), "Delta adjusted: %.3f | Tangent Difference Norm: %.3f", delta, tangentsDifferenceNorm);
-
-    // Compute the percentage of the path completed
-    double path_completed = (closestPointAbscissa / path->EndParameter()) * 100.0;
-    RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Path completed: %.2f%%", path_completed);
-
-    // Update current abscissa for the next cycle
-    currentAbscissa_ = closestPointAbscissa;
-
-    // Check if the path has ended
-    if (currentAbscissa_ >= path->EndParameter()) {
-        RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Path has ended. Switching to HOLD state.");
-        fsm_->SetNextState(States::HOLD);
-    }
-}
-
 
 
 bool PathPlanningState::updateHeadingPitch(
@@ -278,8 +268,8 @@ bool PathPlanningState::updateHeadingPitch(
     double epsilon,
     double& DesiredHeading,
     double& DesiredPitch,
-    double& crossTrackError,
-    double& verticalTrackError)
+    double& crossTrackError_,
+    double& verticalTrackError_)
 {
     // Calculate the direction vector along the path
     Eigen::Vector3d pathDirection = goalPos - closestPos;
@@ -309,8 +299,8 @@ bool PathPlanningState::updateHeadingPitch(
 
     // Calculate position errors
     Eigen::Vector3d positionError = currentPos - closestPos;
-    crossTrackError = positionError.dot(crossTrackVector);
-    verticalTrackError = positionError.dot(verticalTrackVector);
+    crossTrackError_ = positionError.dot(crossTrackVector);
+    verticalTrackError_ = positionError.dot(verticalTrackVector);
 
     // Time since last update
     auto current_time = std::chrono::system_clock::now();
@@ -318,21 +308,21 @@ bool PathPlanningState::updateHeadingPitch(
     last_update_time = current_time;
 
     // ALOS ON FOR HEADING
-    std::cout << "Cross-track error:" << crossTrackError << std::endl;
-    if (fabs(crossTrackError) > epsilon) {
-        double modulationFactor = Delta / sqrt(Delta * Delta + crossTrackError * crossTrackError);
-        beta_hat_c += gamma_crosstrack * modulationFactor * crossTrackError * time_elapsed.count();
-        beta_hat_c = std::clamp(beta_hat_c, -0.4, 0.4);
-        DesiredHeading -= beta_hat_c - atan2(crossTrackError, Delta);
+    RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Cross-track error: %f", crossTrackError_);
+    if (fabs(crossTrackError_) > epsilon) {
+        double modulation_factor = Delta / sqrt(Delta * Delta + crossTrackError_ * crossTrackError_);
+        betaHat_c += gamma_crosstrack * modulation_factor * crossTrackError_ * time_elapsed.count();
+        betaHat_c = std::clamp(betaHat_c, -0.4, 0.4);
+        DesiredHeading -= betaHat_c - atan2(crossTrackError_, Delta);
     }
 
     // ALOS ON FOR PITCH
-    std::cout << "Vertical-track error:" << verticalTrackError << std::endl;
-    if (fabs(verticalTrackError) > epsilon) {
-        double modulation_factor_vertical = Delta / sqrt(Delta * Delta + verticalTrackError * verticalTrackError);
-        theta_hat_c += gamma_verticaltrack * modulation_factor_vertical * verticalTrackError * time_elapsed.count();
-        theta_hat_c = std::clamp(theta_hat_c, -0.83, 0.83);
-        DesiredPitch -= theta_hat_c - atan2(verticalTrackError, Delta);
+    RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Vertical-track error: %f", verticalTrackError_);
+    if (fabs(verticalTrackError_) > epsilon) {
+        double modulation_factor_vertical = Delta / sqrt(Delta * Delta + verticalTrackError_ * verticalTrackError_);
+        thetaHat_c += gamma_verticaltrack * modulation_factor_vertical * verticalTrackError_ * time_elapsed.count();
+        thetaHat_c = std::clamp(thetaHat_c, -0.83, 0.83);
+        DesiredPitch -= thetaHat_c - atan2(verticalTrackError_, Delta);
     }
 
     return true;

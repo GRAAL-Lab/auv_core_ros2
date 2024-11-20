@@ -17,16 +17,17 @@ KCL::KCL(const std::string& configName)
         configNameParam,
         nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
         nullptr, nullptr, nullptr, nullptr, nullptr,
-        &ctrlData_->gainsX_, &ctrlData_->gainsY_, &ctrlData_->gainsZ_,
-        &ctrlData_->gainsRoll_, &ctrlData_->gainsPitch_, &ctrlData_->gainsYaw_,
-        &ctrlData_->maxVelocity_, &ctrlData_->minVelocity_);
+        &ctrlData_->gainsX, &ctrlData_->gainsY, &ctrlData_->gainsZ,
+        &ctrlData_->gainsRoll, &ctrlData_->gainsPitch, &ctrlData_->gainsYaw,
+        &ctrlData_->maxVelocity, &ctrlData_->minVelocity);
+
 
     // Set up state transitions
     SetupTransitions();
 
     // Create FSM timer
     fsmTimer_ = this->create_wall_timer(
-        100ms, std::bind(&KCL::executeFSM, this));
+        100ms, std::bind(&KCL::ExecuteFSM, this));
 
     // Create subscriptions
     joystickSubscription_ = this->create_subscription<sensor_msgs::msg::Joy>(
@@ -64,71 +65,72 @@ KCL::KCL(const std::string& configName)
 
 void KCL::JoyStickCallback(const sensor_msgs::msg::Joy::SharedPtr msg) {
     // Map joystick axes data to desired velocity
-    MapJoystickToVelocity(msg->axes, &ctrlData_->joystick_velocity_desired_);
+    MapJoystickToVelocity(msg->axes, &ctrlData_->joystickVelocityDesired);
 }
 
 void KCL::PoseActualCallback(const auv_core_helper::msg::PoseStamped::SharedPtr msg) {
     // Update actual pose in control data
-    ctrlData_->pose_actual_ << msg->x, msg->y, msg->z, msg->roll, msg->pitch, msg->yaw;
-    ctrlData_->time_actual_ = msg->header.stamp;
+    ctrlData_->poseActual << msg->x, msg->y, msg->z, msg->roll, msg->pitch, msg->yaw;
+    ctrlData_->timeActual = msg->header.stamp;
 }
 
 void KCL::VelocityActualCallback(const geometry_msgs::msg::Twist::SharedPtr msg) {
     // Update actual velocity in control data
-    ctrlData_->velocity_actual_ << msg->linear.x, msg->linear.y, msg->linear.z,
+    ctrlData_->velocityActual << msg->linear.x, msg->linear.y, msg->linear.z,
                                    msg->angular.x, msg->angular.y, msg->angular.z;
 }
 
 void KCL::AccelerationActualCallback(const geometry_msgs::msg::Twist::SharedPtr msg) {
     // Update actual acceleration in control data
-    ctrlData_->acceleration_actual_ << msg->linear.x, msg->linear.y, msg->linear.z,
+    ctrlData_->accelerationActual << msg->linear.x, msg->linear.y, msg->linear.z,
                                        msg->angular.x, msg->angular.y, msg->angular.z;
 }
 
 void KCL::HandleControlCommand(
     const std::shared_ptr<auv_core_helper::srv::ControlCommand::Request> request,
     std::shared_ptr<auv_core_helper::srv::ControlCommand::Response> response) {
+
     // Handle different control states
     if (request->state == States::TRAJECTORY_FOLLOWING) {
-        ctrlData_->pose_goal_ = {request->x, request->y, request->z, request->roll, request->pitch, request->yaw};
-        ctrlData_->TP_goal_time_ = request->time_to_reach;
+        ctrlData_->poseGoal = {request->x, request->y, request->z, request->roll, request->pitch, request->yaw};
+        ctrlData_->tpGoalTime = request->time_to_reach;
     } else if (request->state == States::PATH_FOLLOWING) {
-        ctrlData_->path_planning_2d_3d = request->path_planning_2d_3d;
-        if (request->path_planning_2d_3d == 3) {
+        ctrlData_->pathPlanningMode = request->path_planning_2d_3d	;
+        if (ctrlData_->pathPlanningMode == 3) {
             // Handle 3D Helix Path Following
-            ctrlData_->helix_startPos = {request->helix_start_pos.x, request->helix_start_pos.y, request->helix_start_pos.z};
-            ctrlData_->helix_axisPos = {request->helix_axis_pos.x, request->helix_axis_pos.y, request->helix_axis_pos.z};
-            ctrlData_->helix_axisDir = {request->helix_axis_dir.x, request->helix_axis_dir.y, request->helix_axis_dir.z};
-            ctrlData_->helix_frequency = request->helix_frequency;
-            ctrlData_->helix_numQuadrants = request->helix_num_quadrants;
-            ctrlData_->helix_counterClockwise = request->helix_counter_clockwise;
-        } else if (request->path_planning_2d_3d == 1) {
+            ctrlData_->helixStartPos = {request->helix_start_pos.x, request->helix_start_pos.y, request->helix_start_pos.z};
+            ctrlData_->helixAxisPos = {request->helix_axis_pos.x, request->helix_axis_pos.y, request->helix_axis_pos.z};
+            ctrlData_->helixAxisDir = {request->helix_axis_dir.x, request->helix_axis_dir.y, request->helix_axis_dir.z};
+            ctrlData_->helixFrequency = request->helix_frequency;
+            ctrlData_->helixNumQuadrants = request->helix_num_quadrants;
+            ctrlData_->helixCounterClockwise = request->helix_counter_clockwise;
+        } else if (ctrlData_->pathPlanningMode == 1) {
             // Handle 2D Serpentine Path Following
-            ctrlData_->serpentine_angle_ = request->serpentine_angle;
-            ctrlData_->serpentine_direction_ = request->serpentine_direction;
-            ctrlData_->serpentine_offset_ = request->serpentine_offset;
-            ctrlData_->serpentine_polygon_vertices_.clear();
+            ctrlData_->serpentineAngle = request->serpentine_angle;
+            ctrlData_->serpentineDirection = request->serpentine_direction;
+            ctrlData_->serpentineOffset = request->serpentine_offset;
+            ctrlData_->serpentinePolygonVertices.clear();
             for (const auto& vertex : request->serpentine_polygon_vertices) {
-                ctrlData_->serpentine_polygon_vertices_.emplace_back(vertex.x, vertex.y, vertex.z);
+                ctrlData_->serpentinePolygonVertices.emplace_back(vertex.x, vertex.y, vertex.z);
             }
-        } else if (request->path_planning_2d_3d == 2) {
+        } else if (ctrlData_->pathPlanningMode == 2) {
             // Handle 3D Serpentine Path Following
-            ctrlData_->serpentine_angle_ = request->serpentine_angle;
-            ctrlData_->serpentine_direction_ = request->serpentine_direction;
-            ctrlData_->serpentine_offset_ = request->serpentine_offset;
-            ctrlData_->serpentine_polygon_vertices_.clear();
+            ctrlData_->serpentineAngle = request->serpentine_angle;
+            ctrlData_->serpentineDirection = request->serpentine_direction;
+            ctrlData_->serpentineOffset = request->serpentine_offset;
+            ctrlData_->serpentinePolygonVertices.clear();
             for (const auto& vertex : request->serpentine_polygon_vertices) {
-                ctrlData_->serpentine_polygon_vertices_.emplace_back(vertex.x, vertex.y, vertex.z);
+                ctrlData_->serpentinePolygonVertices.emplace_back(vertex.x, vertex.y, vertex.z);
             }
-            ctrlData_->dive_depth_ = request->dive_depth;
-            ctrlData_->curvature_ = request->curvature;
-            ctrlData_->dip_num_points_ = request->dip_num_points;
-            ctrlData_->dive_length_ = request->dive_length;
+            ctrlData_->diveDepth = request->dive_depth;
+            ctrlData_->curvature = request->curvature;
+            ctrlData_->dipNumPoints = request->dip_num_points;
+            ctrlData_->diveLength = request->dive_length;
         }
     }
 
     // Transition to the requested state
-    std::cout << "Transitioning to state: " << request->state << std::endl;
+    RCLCPP_INFO(this->get_logger(), "Transitioning to state: %s", request->state.c_str());
     fsm_.SetNextState(request->state);
 
     // Respond with success
@@ -158,14 +160,32 @@ void KCL::SetupTransitions() {
     fsm_.AddState(States::PATH_FOLLOWING, pathPlanningState_.get());
 
     // Enable transitions
+    fsm_.EnableTransition(States::IDLE, States::HOLD, true);
     fsm_.EnableTransition(States::IDLE, States::JOYSTICK, true);
     fsm_.EnableTransition(States::IDLE, States::TRAJECTORY_FOLLOWING, true);
+    fsm_.EnableTransition(States::IDLE, States::PATH_FOLLOWING, true);
+    fsm_.EnableTransition(States::HOLD, States::IDLE, true);
+    fsm_.EnableTransition(States::HOLD, States::JOYSTICK, true);
+    fsm_.EnableTransition(States::HOLD, States::TRAJECTORY_FOLLOWING, true);
+    fsm_.EnableTransition(States::HOLD, States::PATH_FOLLOWING, true);
+    fsm_.EnableTransition(States::JOYSTICK, States::IDLE, true);
+    fsm_.EnableTransition(States::JOYSTICK, States::HOLD, true);
+    fsm_.EnableTransition(States::JOYSTICK, States::TRAJECTORY_FOLLOWING, true);
+    fsm_.EnableTransition(States::JOYSTICK, States::PATH_FOLLOWING, true);
+    fsm_.EnableTransition(States::TRAJECTORY_FOLLOWING, States::IDLE, true);
+    fsm_.EnableTransition(States::TRAJECTORY_FOLLOWING, States::HOLD, true);
+    fsm_.EnableTransition(States::TRAJECTORY_FOLLOWING, States::JOYSTICK, true);
+    fsm_.EnableTransition(States::TRAJECTORY_FOLLOWING, States::PATH_FOLLOWING, true);
+    fsm_.EnableTransition(States::PATH_FOLLOWING, States::IDLE, true);
+    fsm_.EnableTransition(States::PATH_FOLLOWING, States::HOLD, true);
+    fsm_.EnableTransition(States::PATH_FOLLOWING, States::JOYSTICK, true);
+    fsm_.EnableTransition(States::PATH_FOLLOWING, States::TRAJECTORY_FOLLOWING, true);
     fsm_.SetInitState(States::HOLD);
 
     RCLCPP_INFO(this->get_logger(), "FSM transitions set up.");
 }
 
-void KCL::executeFSM() {
+void KCL::ExecuteFSM() {
     // Execute the current FSM state
     std::string previous_state = fsm_.GetCurrentStateName();
     fsm_.SwitchState();
@@ -177,16 +197,16 @@ void KCL::executeFSM() {
     statePublisher_->publish(stateMsg);
 
     // Publish goal pose
-    PublishEigenPose(poseGoalPublisher_, ctrlData_->pose_goal_, this->get_clock()->now());
+    PublishEigenPose(poseGoalPublisher_, ctrlData_->poseGoal, this->get_clock()->now());
 
     // Final clamping of velocities
     for (int i = 0; i < 6; ++i) {
-        ctrlData_->velocity_desired_[i] = std::clamp(ctrlData_->velocity_desired_[i], ctrlData_->minVelocity_[i], ctrlData_->maxVelocity_[i]);
+        ctrlData_->velocityDesired[i] = std::clamp(ctrlData_->velocityDesired[i], ctrlData_->minVelocity[i], ctrlData_->maxVelocity[i]);
     }
 
     // Publish desired velocity
-    PublishEigenVelocity(velocityDesiredPublisher_, ctrlData_->velocity_desired_);
+    PublishEigenVelocity(velocityDesiredPublisher_, ctrlData_->velocityDesired);
 
     // Publish the planned path
-    pathPublisher_->publish(ctrlData_->planned_path_);
+    pathPublisher_->publish(ctrlData_->plannedPath);
 }

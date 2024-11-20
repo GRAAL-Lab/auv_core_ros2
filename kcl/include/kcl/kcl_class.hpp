@@ -35,7 +35,7 @@ public:
     explicit KCL(const std::string& configName);
 
     /// Executes the FSM by running the state transitions and actions.
-    void executeFSM();
+    void ExecuteFSM();
 
 private:
     // --------------------

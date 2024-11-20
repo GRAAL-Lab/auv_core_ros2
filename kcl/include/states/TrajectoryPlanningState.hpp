@@ -4,15 +4,19 @@
 
 class TrajectoryPlanningState : public BaseAUVState {
 private:
-    Eigen::Matrix<double, 6, 1> pose_initial;
-    Eigen::Matrix<double, 6, 1> pose_goal;
-    double T_total;
-    double T_current_start;
+    Eigen::Matrix<double, 6, 1> poseInitial_;
+    Eigen::Matrix<double, 6, 1> poseGoal_;
+    double tTotal_;
+    double tCurrentStart_;
 
 public:
     explicit TrajectoryPlanningState(fsm::FSM* fsm);
     fsm::retval OnEntry() override;
     fsm::retval Execute() override;
     fsm::retval OnExit() override;
-    Eigen::Matrix<double, 6, 1> FindNextTrajectoryPoint(Eigen::Matrix<double, 6, 1> pose_initial, Eigen::Matrix<double, 6, 1> pose_goal, double T_total, double T_current);
+    Eigen::Matrix<double, 6, 1> FindNextTrajectoryPoint(
+        const Eigen::Matrix<double, 6, 1>& poseInitial_,
+        const Eigen::Matrix<double, 6, 1>& poseGoal_,
+        double tTotal_,
+        double tCurrent_) const;
 };

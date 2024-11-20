@@ -8,6 +8,10 @@
 #include <vector>
 #include <memory>
 #include <chrono>
+#include <rclcpp/rclcpp.hpp>
+#include <cmath>
+#include <filesystem>
+#include <limits>
 
 /// The `PathPlanningState` class manages the autonomous path planning behavior of the AUV.
 /// It supports various path types (e.g., serpentine, helical) and uses PID controllers for guidance.
@@ -17,34 +21,34 @@ private:
     std::shared_ptr<sisl::Path> path; ///< SISL-generated path.
     std::vector<Eigen::Vector3d> sampledPoints; ///< Sampled points from the path.
     bool isCurveSet_ = false; ///< Whether the curve/path is set.
-    bool isVehicleOnPathDirection = false; ///< Whether the vehicle is aligned with the path direction.
+    bool isVehicleOnPathDirection_ = false; ///< Whether the vehicle is aligned with the path direction.
     double currentAbscissa_ = 0.0; ///< Current abscissa (progress along the path).
-    double closestPointAbscissa = 0.0; ///< Abscissa of the closest point on the path.
+    double closestPointAbscissa_ = 0.0; ///< Abscissa of the closest point on the path.
 
     // Path planning parameters
-    double deltaMin = 0.2; ///< Minimum look-ahead distance.
-    double deltaMax = 2.0; ///< Maximum look-ahead distance.
-    double delta = deltaMax; ///< Current look-ahead distance.
+    double deltaMin_ = 0.2; ///< Minimum look-ahead distance.
+    double deltaMax_ = 2.0; ///< Maximum look-ahead distance.
+    double delta_ = deltaMax_; ///< Current look-ahead distance.
     double epsilon = 0.0; ///< Threshold for activating adaptive look-ahead.
 
     // Error metrics
-    double crossTrackError = 0.0; ///< Cross-track error.
-    double verticalTrackError = 0.0; ///< Vertical track error.
-    double positionXError = 0.0; ///< Error in the X position.
-    double positionYError = 0.0; ///< Error in the Y position.
-    double positionZError = 0.0; ///< Error in the Z position.
-    double rollError = 0.0; ///< Error in the roll orientation.
-    double yawError = 0.0; ///< Error in the yaw orientation.
-    double pitchError = 0.0; ///< Error in the pitch orientation.
+    double crossTrackError_ = 0.0; ///< Cross-track error.
+    double verticalTrackError_ = 0.0; ///< Vertical track error.
+    double positionXError_ = 0.0; ///< Error in the X position.
+    double positionYError_ = 0.0; ///< Error in the Y position.
+    double positionZError_ = 0.0; ///< Error in the Z position.
+    double rollError_ = 0.0; ///< Error in the roll orientation.
+    double yawError_ = 0.0; ///< Error in the yaw orientation.
+    double pitchError_ = 0.0; ///< Error in the pitch orientation.
 
     // PID controllers
-    ctb::DigitalPID pidX, pidY, pidZ; ///< Position PIDs.
-    ctb::DigitalPID pidRoll, pidPitch, pidYaw; ///< Orientation PIDs.
-    ctb::DigitalPID pidDelta; ///< Look-ahead distance PID.
+    ctb::DigitalPID pidX_, pidY_, pidZ_; ///< Position PIDs.
+    ctb::DigitalPID pidRoll_, pidPitch_, pidYaw_; ///< Orientation PIDs.
+    ctb::DigitalPID pidDelta_; ///< Look-ahead distance PID.
 
     // ALOS parameters
-    double beta_hat_c = 0.0; ///< Estimated crab angle.
-    double theta_hat_c = 0.0; ///< Estimated pitch angle.
+    double betaHat_c = 0.0; ///< Estimated crab angle.
+    double thetaHat_c = 0.0; ///< Estimated pitch angle.
     double gamma_crosstrack = 0.125; ///< Crosstrack error gain.
     double gamma_verticaltrack = 0.125; ///< Vertical track error gain.
 
@@ -76,17 +80,8 @@ private:
         double epsilon,
         double& DesiredHeading,
         double& DesiredPitch,
-        double& crossTrackError,
-        double& verticalTrackError);
-
-    /// Initializes all PID controllers using control data gains.
-    void initializePIDControllers();
-
-    /// Aligns the vehicle to the starting direction of the path.
-    void alignVehicleToPath();
-
-    /// Updates the vehicle's goal position and orientation along the path.
-    void updateVehicleGoal();
+        double& crossTrackError_,
+        double& verticalTrackError_);
 
 public:
     /// Constructor

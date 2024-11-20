@@ -2,6 +2,8 @@
 
 #include "states/BaseAUVState.hpp"
 #include "ctrl_toolbox/pid/DigitalPID.h" // Include PID controller library
+#include <iostream>
+
 
 /// The `HoldState` class represents a state in which the AUV holds its current position and orientation.
 /// It uses PID controllers to correct for deviations in position (X, Y, Z) and orientation (roll, pitch, yaw).
@@ -10,22 +12,30 @@ private:
     // --------------------------
     // PID Controllers
     // --------------------------
-    ctb::DigitalPID pidX;     ///< PID controller for X-axis position.
-    ctb::DigitalPID pidY;     ///< PID controller for Y-axis position.
-    ctb::DigitalPID pidZ;     ///< PID controller for Z-axis position.
-    ctb::DigitalPID pidRoll;  ///< PID controller for roll angle.
-    ctb::DigitalPID pidYaw;   ///< PID controller for yaw angle.
-    ctb::DigitalPID pidPitch; ///< PID controller for pitch angle.
+    ctb::DigitalPID pidX_;     ///< PID controller for X-axis position.
+    ctb::DigitalPID pidY_;     ///< PID controller for Y-axis position.
+    ctb::DigitalPID pidZ_;     ///< PID controller for Z-axis position.
+    ctb::DigitalPID pidRoll_;  ///< PID controller for roll angle.
+    ctb::DigitalPID pidYaw_;   ///< PID controller for yaw angle.
+    ctb::DigitalPID pidPitch_; ///< PID controller for pitch angle.
+
+    // Initialize PID controllers
+    ctb::PIDGains gainsX_;
+    ctb::PIDGains gainsY_;
+    ctb::PIDGains gainsZ_;
+    ctb::PIDGains gainsRoll_;
+    ctb::PIDGains gainsPitch_;
+    ctb::PIDGains gainsYaw_;
 
     // --------------------------
     // Error Tracking
     // --------------------------
-    double positionXError = 0.0; ///< Position error in the X direction.
-    double positionYError = 0.0; ///< Position error in the Y direction.
-    double positionZError = 0.0; ///< Position error in the Z direction.
-    double rollError = 0.0;      ///< Orientation error in roll.
-    double yawError = 0.0;       ///< Orientation error in yaw.
-    double pitchError = 0.0;     ///< Orientation error in pitch.
+    double positionXError_ = 0.0; ///< Position error in the X direction.
+    double positionYError_ = 0.0; ///< Position error in the Y direction.
+    double positionZError_ = 0.0; ///< Position error in the Z direction.
+    double rollError_ = 0.0;      ///< Orientation error in roll.
+    double yawError_ = 0.0;       ///< Orientation error in yaw.
+    double pitchError_ = 0.0;     ///< Orientation error in pitch.
 
 public:
     /// Constructor for the `HoldState` class.

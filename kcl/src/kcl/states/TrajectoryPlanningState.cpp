@@ -1,37 +1,40 @@
 #include "states/TrajectoryPlanningState.hpp"
 
-
-
 // Constructor
 TrajectoryPlanningState::TrajectoryPlanningState(fsm::FSM* fsm)
-    : BaseAUVState(fsm, States::TRAJECTORY_FOLLOWING), T_total(0), T_current_start(0) {}
+    : BaseAUVState(fsm, States::TRAJECTORY_FOLLOWING), tTotal_(0.0), tCurrentStart_(0.0) {}
 
 // OnEntry
 fsm::retval TrajectoryPlanningState::OnEntry() {
-    T_total = ctrlData->TP_goal_time_; // Total duration of the trajectory in seconds
-    T_current_start = ctrlData->time_actual_.seconds(); // Capture start time for the trajectory
-    pose_initial = ctrlData->pose_actual_;
-    pose_goal = ctrlData->pose_goal_;
+    tTotal_ = ctrlData->tpGoalTime;                    // Total duration of the trajectory in seconds
+    tCurrentStart_ = ctrlData->timeActual.seconds();  // Capture the start time of the trajectory
+    poseInitial_ = ctrlData->poseActual;              // Store the initial pose
+    poseGoal_ = ctrlData->poseGoal;                   // Store the target pose
     return fsm::ok;
 }
 
 // Execute
 fsm::retval TrajectoryPlanningState::Execute() {
-    double T_current = ctrlData->time_actual_.seconds() - T_current_start;
-    if (T_current >= T_total) {
-        ctrlData->velocity_desired_.setZero();
-        if ((ctrlData->pose_actual_ - pose_goal).norm() < 0.5) {
+    double tCurrent = ctrlData->timeActual.seconds() - tCurrentStart_; // Current elapsed time
+
+    if (tCurrent >= tTotal_) {
+        // Stop movement if the total time is reached
+        ctrlData->velocityDesired.setZero();
+
+        if ((ctrlData->poseActual - poseGoal_).norm() < 0.5) {
+            // If the goal is reached within a tolerance
             std::cout << "Time Elapsed, Goal Reached!" << std::endl;
-            fsm_->SetNextState(States::HOLD); // Transition to IDLE state when goal is reached
+            fsm_->SetNextState(States::HOLD);  // Transition to the HOLD state
         } else {
+            // If the goal is not reached
             std::cout << "Time Elapsed, Goal Not Reached!" << std::endl;
             fsm_->SetNextState(States::HOLD);
         }
         return fsm::ok;
     }
 
-    ctrlData->velocity_desired_ = FindNextTrajectoryPoint(pose_initial, pose_goal, T_total, T_current);
-
+    // Compute the next trajectory point
+    ctrlData->velocityDesired = FindNextTrajectoryPoint(poseInitial_, poseGoal_, tTotal_, tCurrent);
 
     return fsm::ok;
 }
@@ -41,18 +44,21 @@ fsm::retval TrajectoryPlanningState::OnExit() {
     return fsm::ok;
 }
 
+// FindNextTrajectoryPoint
 Eigen::Matrix<double, 6, 1> TrajectoryPlanningState::FindNextTrajectoryPoint(
-    Eigen::Matrix<double, 6, 1> pose_initial,
-    Eigen::Matrix<double, 6, 1> pose_goal,
-    double T_total,
-    double T_current) {
+    const Eigen::Matrix<double, 6, 1>& poseInitial_,
+    const Eigen::Matrix<double, 6, 1>& poseGoal_,
+    double tTotal_,
+    double tCurrent_) const {
 
-    Eigen::Matrix<double, 6, 1> velocity_desired;
-    double tr = T_current / T_total;
+    Eigen::Matrix<double, 6, 1> velocityDesired;
+    double tRatio = tCurrent_ / tTotal_; // Normalized time ratio
 
     for (int i = 0; i < 6; i++) {
-        double temp = pose_goal[i] - pose_initial[i];
-        velocity_desired[i] = (30 * std::pow(tr, 2) - 60 * std::pow(tr, 3) + 30 * std::pow(tr, 4)) * temp / T_total;
+        double deltaPose = poseGoal_[i] - poseInitial_[i]; // Difference between goal and initial pose
+        velocityDesired[i] = (30 * std::pow(tRatio, 2) - 60 * std::pow(tRatio, 3) + 30 * std::pow(tRatio, 4)) 
+                             * deltaPose / tTotal_;
     }
-    return velocity_desired;
+
+    return velocityDesired;
 }
