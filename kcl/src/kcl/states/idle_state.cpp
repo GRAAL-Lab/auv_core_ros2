@@ -1,4 +1,4 @@
-#include "states/IdleState.hpp"
+#include "states/idle_state.hpp"
 #include <iostream>
 
 // Constructor

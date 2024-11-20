@@ -1,4 +1,4 @@
-#include "states/JoystickState.hpp"
+#include "states/joystick_state.hpp"
 #include <iostream>
 
 // Constructor

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "states/BaseAUVState.hpp"
+#include "states/base_auv_state.hpp"
 
 /// The `IdleState` class represents an idle state in which the AUV performs no active operations.
 /// All control outputs (e.g., velocities, goals) are reset to zero.

@@ -1,7 +1,7 @@
 #include <iostream>       // For std::cerr, std::endl
 #include <memory>         // For std::make_shared
 #include <string>         // For std::string
-#include "kcl/kcl_class.hpp"  // Include KCL class definition (project-specific header)
+#include "kcl/kinematic_control_layer.hpp"  // Include KCL class definition (project-specific header)
 #include "rclcpp/rclcpp.hpp"  // For ROS 2 API
 
 [[nodiscard]] int main(int argc, char** argv) {

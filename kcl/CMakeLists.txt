@@ -60,12 +60,12 @@ link_directories(${CMAKE_INSTALL_PREFIX}/auv_core_helper/lib)
 
 # Define a static library for states classes
 add_library(states_lib STATIC
-  src/kcl/states/BaseAUVState.cpp
-  src/kcl/states/IdleState.cpp
-  src/kcl/states/JoystickState.cpp
-  src/kcl/states/TrajectoryPlanningState.cpp
-  src/kcl/states/PathPlanningState.cpp
-  src/kcl/states/HoldState.cpp
+  src/kcl/states/base_auv_state.cpp
+  src/kcl/states/idle_state.cpp
+  src/kcl/states/joystick_state.cpp
+  src/kcl/states/trajectory_planning_state.cpp
+  src/kcl/states/path_planning_state.cpp
+  src/kcl/states/hold_state.cpp
 )
 target_include_directories(states_lib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -96,23 +96,23 @@ target_link_libraries(states_lib
 )
 
 # Define executables for various nodes
-add_executable(kcl
-    src/kcl.cpp
-    src/kcl/states/BaseAUVState.cpp
-    src/kcl/states/IdleState.cpp
-    src/kcl/states/JoystickState.cpp
-    src/kcl/states/TrajectoryPlanningState.cpp
-    src/kcl/states/PathPlanningState.cpp
-    src/kcl/states/HoldState.cpp
-    src/kcl/kcl/kcl_class.cpp
+add_executable(kinematic_control_layer_node
+    src/kinematic_control_layer_node.cpp
+    src/kcl/states/base_auv_state.cpp
+    src/kcl/states/idle_state.cpp
+    src/kcl/states/joystick_state.cpp
+    src/kcl/states/trajectory_planning_state.cpp
+    src/kcl/states/path_planning_state.cpp
+    src/kcl/states/hold_state.cpp
+    src/kcl/kcl/kinematic_control_layer.cpp
 )
-add_executable(interface
-    src/interface.cpp
-    src/interface/interface_class.cpp
+add_executable(interface_node
+    src/interface_node.cpp
+    src/interface/interface.cpp
 )
 
 # Setup dependencies and linking for each executable
-foreach(target kcl interface)
+foreach(target kinematic_control_layer_node interface_node)
   ament_target_dependencies(${target}
     rclcpp
     visualization_msgs
@@ -129,7 +129,7 @@ foreach(target kcl interface)
 endforeach()
 
 # Link libraries specific to executables
-target_link_libraries(kcl
+target_link_libraries(kinematic_control_layer_node
   ${FSM_LIBRARY}
   ${RML_LIBRARY}
   ${SISL_LIBRARY}
@@ -139,7 +139,7 @@ target_link_libraries(kcl
 )
 
 # Install the kcl executable
-install(TARGETS kcl interface
+install(TARGETS kinematic_control_layer_node interface_node
   DESTINATION lib/${PROJECT_NAME}
 )
 

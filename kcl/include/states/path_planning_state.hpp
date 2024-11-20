@@ -1,6 +1,6 @@
 #pragma once
 
-#include "states/BaseAUVState.hpp"
+#include "states/base_auv_state.hpp"
 #include <sisl_toolbox/sisl_toolbox.hpp>
 #include <Eigen/Dense>
 #include <nav_msgs/msg/path.hpp>

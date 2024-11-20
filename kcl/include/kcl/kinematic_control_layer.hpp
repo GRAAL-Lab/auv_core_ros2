@@ -19,12 +19,12 @@
 #include "auv_core_helper/helper_lib.hpp"
 
 // State headers
-#include "states/BaseAUVState.hpp"
-#include "states/IdleState.hpp"
-#include "states/HoldState.hpp"
-#include "states/JoystickState.hpp"
-#include "states/TrajectoryPlanningState.hpp"
-#include "states/PathPlanningState.hpp"
+#include "states/base_auv_state.hpp"
+#include "states/idle_state.hpp"
+#include "states/hold_state.hpp"
+#include "states/joystick_state.hpp"
+#include "states/trajectory_planning_state.hpp"
+#include "states/path_planning_state.hpp"
 #include "states/commands.hpp"
 
 // AUV-specific topic names

@@ -1,4 +1,4 @@
-#include "states/PathPlanningState.hpp"
+#include "states/path_planning_state.hpp"
 
 // Constructor
 PathPlanningState::PathPlanningState(fsm::FSM* fsm) : BaseAUVState(fsm, "PATH_PLANNING") {

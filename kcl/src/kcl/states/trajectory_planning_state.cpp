@@ -1,4 +1,4 @@
-#include "states/TrajectoryPlanningState.hpp"
+#include "states/trajectory_planning_state.hpp"
 
 // Constructor
 TrajectoryPlanningState::TrajectoryPlanningState(fsm::FSM* fsm)

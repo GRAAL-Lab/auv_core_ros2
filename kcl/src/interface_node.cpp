@@ -1,4 +1,4 @@
-#include "interface/interface_class.hpp"
+#include "interface/interface.hpp"
 
 /// Main entry point for the InterfaceNode.
 [[nodiscard]] int main(int argc, char** argv) {

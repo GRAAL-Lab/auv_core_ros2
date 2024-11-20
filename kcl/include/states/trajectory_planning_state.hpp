@@ -1,6 +1,6 @@
 #pragma once
 
-#include "states/BaseAUVState.hpp"
+#include "states/base_auv_state.hpp"
 
 class TrajectoryPlanningState : public BaseAUVState {
 private:

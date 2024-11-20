@@ -1,4 +1,4 @@
-#include "interface/interface_class.hpp"
+#include "interface/interface.hpp"
 
 InterfaceNode::InterfaceNode()
     : Node("interface_node"), isStateInitialized_(false), pathChoice_(0) {

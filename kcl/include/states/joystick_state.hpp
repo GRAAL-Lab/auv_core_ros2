@@ -1,6 +1,6 @@
 #pragma once
 
-#include "states/BaseAUVState.hpp"
+#include "states/base_auv_state.hpp"
 
 /// The `JoystickState` class represents a state where the AUV is controlled via joystick input.
 /// In this state, the desired velocities are directly set from joystick commands.
