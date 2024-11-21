@@ -26,8 +26,10 @@ KCL::KCL(const std::string& configName)
     SetupTransitions();
 
     // Create FSM timer
-    std::chrono::milliseconds(static_cast<int>(ctrlData_->dt * 1000)),
-    std::bind(&KCL::ExecuteFSM, this);
+    fsmTimer_ = this->create_wall_timer(
+        std::chrono::milliseconds(static_cast<int>(ctrlData_->dt * 1000)),
+        std::bind(&KCL::ExecuteFSM, this));
+
 
     // Create subscriptions
     joystickSubscription_ = this->create_subscription<sensor_msgs::msg::Joy>("/joy", 1, std::bind(&KCL::JoyStickCallback, this, std::placeholders::_1));
@@ -94,7 +96,7 @@ void KCL::HandleControlCommand(
         ctrlData_->poseGoal << request->x, request->y, request->z, request->roll, request->pitch, request->yaw;
         ctrlData_->tpGoalTime = request->time_to_reach;
     } else if (request->state == States::PATH_FOLLOWING) {
-        ctrlData_->pathPlanningMode = request->path_planning_2d_3d	;
+        ctrlData_->pathPlanningMode = request->path_planning_2d_3d;
         if (ctrlData_->pathPlanningMode == 3) {
             // Handle 3D Helix Path Following
             ctrlData_->helixStartPos = {request->helix_start_pos.x, request->helix_start_pos.y, request->helix_start_pos.z};
@@ -131,6 +133,7 @@ void KCL::HandleControlCommand(
     // Transition to the requested state
     RCLCPP_INFO(this->get_logger(), "Transitioning to state: %s", request->state.c_str());
     fsm_.SetNextState(request->state);
+    fsm_.SwitchState();
 
     // Respond with success
     response->success = true;
@@ -186,8 +189,8 @@ void KCL::SetupTransitions() {
 
 void KCL::ExecuteFSM() {
     // Execute the current FSM state
-    std::string previous_state = fsm_.GetCurrentStateName();
-    fsm_.SwitchState();
+    // std::string previous_state = fsm_.GetCurrentStateName();
+    // fsm_.SwitchState();
     fsm_.ExecuteState();
 
     // Publish current state

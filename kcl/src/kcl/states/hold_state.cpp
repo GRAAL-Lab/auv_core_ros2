@@ -29,14 +29,13 @@ fsm::retval HoldState::OnEntry() noexcept {
     ctb::PIDGains gainsYaw = {ctrlData->gainsYaw(0), ctrlData->gainsYaw(1), ctrlData->gainsYaw(2), ctrlData->gainsYaw(3), ctrlData->gainsYaw(4), ctrlData->gainsYaw(5)};
 
 
-
     // Initialize PID controllers with the specified gains
-    pidX_.Initialize(gainsX, ctrlData->dt, (ctrlData->maxVelocity(1) > std::abs(ctrlData->minVelocity(1))) ? ctrlData->maxVelocity(1) : std::abs(ctrlData->minVelocity(1))); // Initialize the PID controller for longitudinal position
-    pidY_.Initialize(gainsY, ctrlData->dt, (ctrlData->maxVelocity(2) > std::abs(ctrlData->minVelocity(2))) ? ctrlData->maxVelocity(2) : std::abs(ctrlData->minVelocity(2))); // Initialize the PID controller for lateral position
-    pidZ_.Initialize(gainsZ, ctrlData->dt, (ctrlData->maxVelocity(3) > std::abs(ctrlData->minVelocity(3))) ? ctrlData->maxVelocity(3) : std::abs(ctrlData->minVelocity(3))); // Initialize the PID controller for depth position
-    pidRoll_.Initialize(gainsRoll, ctrlData->dt, (ctrlData->maxVelocity(4) > std::abs(ctrlData->minVelocity(4))) ? ctrlData->maxVelocity(4) : std::abs(ctrlData->minVelocity(4))); // Initialize the PID controller for roll
-    pidPitch_.Initialize(gainsPitch, ctrlData->dt, (ctrlData->maxVelocity(5) > std::abs(ctrlData->minVelocity(5))) ? ctrlData->maxVelocity(5) : std::abs(ctrlData->minVelocity(5))); // Initialize the PID controller for pitch
-    pidYaw_.Initialize(gainsYaw, ctrlData->dt, (ctrlData->maxVelocity(6) > std::abs(ctrlData->minVelocity(6))) ? ctrlData->maxVelocity(6) : std::abs(ctrlData->minVelocity(6))); // Initialize the PID controller for yaw
+    pidX_.Initialize(gainsX, ctrlData->dt, (ctrlData->maxVelocity(0) > std::abs(ctrlData->minVelocity(0))) ? ctrlData->maxVelocity(0) : std::abs(ctrlData->minVelocity(0))); // Initialize the PID controller for longitudinal position
+    pidY_.Initialize(gainsY, ctrlData->dt, (ctrlData->maxVelocity(1) > std::abs(ctrlData->minVelocity(1))) ? ctrlData->maxVelocity(1) : std::abs(ctrlData->minVelocity(1))); // Initialize the PID controller for lateral position
+    pidZ_.Initialize(gainsZ, ctrlData->dt, (ctrlData->maxVelocity(2) > std::abs(ctrlData->minVelocity(2))) ? ctrlData->maxVelocity(2) : std::abs(ctrlData->minVelocity(2))); // Initialize the PID controller for depth position
+    pidRoll_.Initialize(gainsRoll, ctrlData->dt, (ctrlData->maxVelocity(3) > std::abs(ctrlData->minVelocity(3))) ? ctrlData->maxVelocity(3) : std::abs(ctrlData->minVelocity(3))); // Initialize the PID controller for roll
+    pidPitch_.Initialize(gainsPitch, ctrlData->dt, (ctrlData->maxVelocity(4) > std::abs(ctrlData->minVelocity(4))) ? ctrlData->maxVelocity(4) : std::abs(ctrlData->minVelocity(4))); // Initialize the PID controller for pitch
+    pidYaw_.Initialize(gainsYaw, ctrlData->dt, (ctrlData->maxVelocity(5) > std::abs(ctrlData->minVelocity(5))) ? ctrlData->maxVelocity(5) : std::abs(ctrlData->minVelocity(5))); // Initialize the PID controller for yaw
 
     return fsm::ok;
 }
