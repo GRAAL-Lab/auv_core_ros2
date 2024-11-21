@@ -12,6 +12,7 @@
 #include <cmath>
 #include <filesystem>
 #include <limits>
+#include <auv_core_helper/path_modes.hpp>
 
 /// The `PathPlanningState` class manages the autonomous path planning behavior of the AUV.
 /// It supports various path types (e.g., serpentine, helical) and uses PID controllers for guidance.
@@ -82,6 +83,16 @@ private:
         double& DesiredPitch,
         double& crossTrackError_,
         double& verticalTrackError_);
+
+    /// Converts body angular velocities to Euler angle rates.
+    /// @param rollActual The actual roll angle.
+    /// @param pitchActual The actual pitch angle.
+    /// @param bOmegaDesired The desired body angular velocities.
+    /// @return The Euler angle rates.
+    Eigen::Vector3d convertAngularVelocitiesToEulerRates(
+        double rollActual,
+        double pitchActual,
+        const Eigen::Vector3d& bOmegaDesired);
 
 public:
     /// Constructor

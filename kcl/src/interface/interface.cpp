@@ -313,27 +313,39 @@ void InterfaceNode::SendPathRequest() {
     request->state = States::PATH_FOLLOWING;
     request->path_planning_2d_3d = pathChoice_;
 
-    if (pathChoice_ == 1) { // 2D Serpentine path
-        request->serpentine_angle = serpentineAngle_;
-        request->serpentine_direction = serpentineDirection_;
-        request->serpentine_offset = serpentineOffset_;
-        request->serpentine_polygon_vertices = serpentinePolygonVertices_;
-    } else if (pathChoice_ == 2) { // 3D Serpentine path
-        request->serpentine_angle = serpentineAngle_;
-        request->serpentine_direction = serpentineDirection_;
-        request->serpentine_offset = serpentineOffset_;
-        request->serpentine_polygon_vertices = serpentinePolygonVertices_;
-        request->dive_depth = diveDepth_;
-        request->curvature = curvature_;
-        request->dip_num_points = diveNumPoints_;
-        request->dive_length = diveLength_;
-    } else if (pathChoice_ == 3) { // 3D Helix path
-        request->helix_start_pos = helixStartPosition_;
-        request->helix_axis_pos = helixAxisPosition_;
-        request->helix_axis_dir = helixAxisDirection_;
-        request->helix_frequency = helixFrequency_;
-        request->helix_num_quadrants = helixNumQuadrants_;
-        request->helix_counter_clockwise = helixCounterClockwise_;
+    // Use a switch statement to handle the path choice
+    switch (static_cast<auv_core_helper::PathMode>(pathChoice_)) {
+        case auv_core_helper::PathMode::Serpentine2D: { // 2D Serpentine path
+            request->serpentine_angle = serpentineAngle_;
+            request->serpentine_direction = serpentineDirection_;
+            request->serpentine_offset = serpentineOffset_;
+            request->serpentine_polygon_vertices = serpentinePolygonVertices_;
+            break;
+        }
+        case auv_core_helper::PathMode::Serpentine3D: { // 3D Serpentine path
+            request->serpentine_angle = serpentineAngle_;
+            request->serpentine_direction = serpentineDirection_;
+            request->serpentine_offset = serpentineOffset_;
+            request->serpentine_polygon_vertices = serpentinePolygonVertices_;
+            request->dive_depth = diveDepth_;
+            request->curvature = curvature_;
+            request->dip_num_points = diveNumPoints_;
+            request->dive_length = diveLength_;
+            break;
+        }
+        case auv_core_helper::PathMode::Helix3D: { // 3D Helix path
+            request->helix_start_pos = helixStartPosition_;
+            request->helix_axis_pos = helixAxisPosition_;
+            request->helix_axis_dir = helixAxisDirection_;
+            request->helix_frequency = helixFrequency_;
+            request->helix_num_quadrants = helixNumQuadrants_;
+            request->helix_counter_clockwise = helixCounterClockwise_;
+            break;
+        }
+        default: {
+            std::cout << "Invalid path choice: " << pathChoice_ << std::endl;
+            return; // Exit the function early if the path choice is invalid
+        }
     }
 
     auto resultFuture = controlCommandClient_->async_send_request(
@@ -348,3 +360,4 @@ void InterfaceNode::SendPathRequest() {
             }
         });
 }
+

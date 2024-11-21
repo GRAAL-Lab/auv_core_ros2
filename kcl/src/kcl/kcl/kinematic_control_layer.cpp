@@ -26,12 +26,11 @@ KCL::KCL(const std::string& configName)
     SetupTransitions();
 
     // Create FSM timer
-    fsmTimer_ = this->create_wall_timer(
-        100ms, std::bind(&KCL::ExecuteFSM, this));
+    std::chrono::milliseconds(static_cast<int>(ctrlData_->dt * 1000)),
+    std::bind(&KCL::ExecuteFSM, this);
 
     // Create subscriptions
-    joystickSubscription_ = this->create_subscription<sensor_msgs::msg::Joy>(
-        "/joy", 1, std::bind(&KCL::JoyStickCallback, this, std::placeholders::_1));
+    joystickSubscription_ = this->create_subscription<sensor_msgs::msg::Joy>("/joy", 1, std::bind(&KCL::JoyStickCallback, this, std::placeholders::_1));
 
     poseActualSubscription_ = this->create_subscription<auv_core_helper::msg::PoseStamped>(
         auv_core_helper::topicnames::pose_actual, 1,

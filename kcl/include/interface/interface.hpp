@@ -13,6 +13,7 @@
 #include <std_msgs/msg/string.hpp>
 #include <states/commands.hpp>
 #include <geometry_msgs/msg/vector3.hpp>
+#include <auv_core_helper/path_modes.hpp>
 
 
 class InterfaceNode : public rclcpp::Node {

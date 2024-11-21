@@ -76,6 +76,8 @@ struct ControlData {
     Eigen::VectorXd maxVelocity = Eigen::VectorXd(6); ///< Maximum allowed velocities (linear and angular).
     Eigen::VectorXd minVelocity = Eigen::VectorXd(6); ///< Minimum allowed velocities (linear and angular).
 
+    double dt = 0.1; ///< Time step for control calculations.
+
     // ------------------------------
     // Constructor
     // ------------------------------

@@ -37,6 +37,12 @@ private:
     double yawError_ = 0.0;       ///< Orientation error in yaw.
     double pitchError_ = 0.0;     ///< Orientation error in pitch.
 
+    // --------------------------
+    // Helper Functions MOVE TO DYNAMIC LIBRARY
+    // --------------------------
+    Eigen::Vector3d convertAngularVelocitiesToEulerRates(double rollActual, double pitchActual, const Eigen::Vector3d& bOmegaDesired);
+
+
 public:
     /// Constructor for the `HoldState` class.
     /// @param fsm Pointer to the FSM controlling this state.

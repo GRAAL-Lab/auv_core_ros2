@@ -6,32 +6,39 @@ PathPlanningState::PathPlanningState(fsm::FSM* fsm) : BaseAUVState(fsm, "PATH_PL
 
 fsm::retval PathPlanningState::OnEntry() noexcept {
     RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Entering PATH_PLANNING state");
-    std::string home_path = futils::get_homepath();
-    std::filesystem::create_directories(home_path);
-    if (ctrlData->pathPlanningMode == 3){
-        RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Path Planning Helix 3D");
-        path = sisl::PathFactory::NewHelicalPath(ctrlData->helixStartPos, ctrlData->helixAxisPos, ctrlData->helixAxisDir, ctrlData->helixFrequency, ctrlData->helixNumQuadrants, ctrlData->helixCounterClockwise);
-    }
-    else if (ctrlData->pathPlanningMode == 1){
-        RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Path Planning Serpentine 2D");
-        // Check if the polygon vertices are provided
-        if (ctrlData->serpentinePolygonVertices.empty()) {
+    // std::string home_path = futils::get_homepath();
+    // std::filesystem::create_directories(home_path);
+
+    switch (static_cast<auv_core_helper::PathMode>(ctrlData->pathPlanningMode)) {
+        case auv_core_helper::PathMode::Helix3D: {
+            RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Path Planning Helix 3D");
+            path = sisl::PathFactory::NewHelicalPath(ctrlData->helixStartPos, ctrlData->helixAxisPos, ctrlData->helixAxisDir, ctrlData->helixFrequency, ctrlData->helixNumQuadrants, ctrlData->helixCounterClockwise);
+            break;
+        }
+        case auv_core_helper::PathMode::Serpentine2D: {
+            RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Path Planning Serpentine 2D");
+            if (ctrlData->serpentinePolygonVertices.empty()) {
+                return fsm::fail;
+            }
+            sisl::Path::Direction direction = ctrlData->serpentineDirection ? sisl::Path::Direction::Backward : sisl::Path::Direction::Forward;
+            path = sisl::PathFactory::NewSerpentine(ctrlData->serpentineAngle, direction, ctrlData->serpentineOffset, ctrlData->serpentinePolygonVertices);
+            break;
+        }
+        case auv_core_helper::PathMode::Serpentine3D: {
+            RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Path Planning 3D Serpentine");
+            if (ctrlData->serpentinePolygonVertices.empty()) {
+                return fsm::fail;
+            }
+            sisl::Path::Direction direction = ctrlData->serpentineDirection ? sisl::Path::Direction::Backward : sisl::Path::Direction::Forward;
+            path = sisl::PathFactory::New3DSerpentine(ctrlData->serpentineAngle, direction, ctrlData->serpentineOffset, ctrlData->serpentinePolygonVertices, ctrlData->diveDepth, ctrlData->curvature, ctrlData->dipNumPoints, ctrlData->diveLength);
+            break;
+        }
+        default: {
+            RCLCPP_ERROR(rclcpp::get_logger("PathPlanningState"), "Unknown Path Planning Mode: %d", ctrlData->pathPlanningMode);
             return fsm::fail;
         }
-        // Determine the direction of the serpentine path
-        sisl::Path::Direction direction = ctrlData->serpentineDirection ? sisl::Path::Direction::Backward : sisl::Path::Direction::Forward;
-        path = sisl::PathFactory::NewSerpentine(ctrlData->serpentineAngle, direction, ctrlData->serpentineOffset, ctrlData->serpentinePolygonVertices);
     }
-    else if (ctrlData->pathPlanningMode == 2){
-        RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Path Planning 3D Serpentine");
-        // Check if the polygon vertices are provided
-        if (ctrlData->serpentinePolygonVertices.empty()) {
-            return fsm::fail;
-        }
-        // Determine the direction of the serpentine path
-        sisl::Path::Direction direction = ctrlData->serpentineDirection ? sisl::Path::Direction::Backward : sisl::Path::Direction::Forward;
-        path = sisl::PathFactory::New3DSerpentine(ctrlData->serpentineAngle, direction, ctrlData->serpentineOffset, ctrlData->serpentinePolygonVertices, ctrlData->diveDepth, ctrlData->curvature, ctrlData->dipNumPoints, ctrlData->diveLength);
-    }
+
 
     if (!path) {
         isCurveSet_ = false;
@@ -70,14 +77,14 @@ fsm::retval PathPlanningState::OnEntry() noexcept {
     ctb::PIDGains gainsYaw = {ctrlData->gainsYaw(0), ctrlData->gainsYaw(1), ctrlData->gainsYaw(2), ctrlData->gainsYaw(3), ctrlData->gainsYaw(4), ctrlData->gainsYaw(5)};
 
     ctb::PIDGains gainsDelta = {0.0, 2.0, 0.0, 0.0, 0.0, 0.001};
-    pidX_.Initialize(gainsX, 0.0, 2); // Initialize the PID controller for longitudinal position
-    pidY_.Initialize(gainsY, 0.0, 2); // Initialize the PID controller for lateral position
-    pidZ_.Initialize(gainsZ, 0.0, 2); // Initialize the PID controller for depth position
-    pidRoll_.Initialize(gainsRoll, 0.0, 2); // Initialize the PID controller for roll
-    pidPitch_.Initialize(gainsPitch, 0.0, 2); // Initialize the PID controller for pitch
-    pidYaw_.Initialize(gainsYaw, 0.0, 2); // Initialize the PID controller for yaw
+    pidX_.Initialize(gainsX, ctrlData->dt, (ctrlData->maxVelocity(1) > std::abs(ctrlData->minVelocity(1))) ? ctrlData->maxVelocity(1) : std::abs(ctrlData->minVelocity(1))); // Initialize the PID controller for longitudinal position
+    pidY_.Initialize(gainsY, ctrlData->dt, (ctrlData->maxVelocity(2) > std::abs(ctrlData->minVelocity(2))) ? ctrlData->maxVelocity(2) : std::abs(ctrlData->minVelocity(2))); // Initialize the PID controller for lateral position
+    pidZ_.Initialize(gainsZ, ctrlData->dt, (ctrlData->maxVelocity(3) > std::abs(ctrlData->minVelocity(3))) ? ctrlData->maxVelocity(3) : std::abs(ctrlData->minVelocity(3))); // Initialize the PID controller for depth position
+    pidRoll_.Initialize(gainsRoll, ctrlData->dt, (ctrlData->maxVelocity(4) > std::abs(ctrlData->minVelocity(4))) ? ctrlData->maxVelocity(4) : std::abs(ctrlData->minVelocity(4))); // Initialize the PID controller for roll
+    pidPitch_.Initialize(gainsPitch, ctrlData->dt, (ctrlData->maxVelocity(5) > std::abs(ctrlData->minVelocity(5))) ? ctrlData->maxVelocity(5) : std::abs(ctrlData->minVelocity(5))); // Initialize the PID controller for pitch
+    pidYaw_.Initialize(gainsYaw, ctrlData->dt, (ctrlData->maxVelocity(6) > std::abs(ctrlData->minVelocity(6))) ? ctrlData->maxVelocity(6) : std::abs(ctrlData->minVelocity(6))); // Initialize the PID controller for yaw
 
-    pidDelta_.Initialize(gainsDelta, 0.001, 0.1); // Initialize the PID controller for delta
+    pidDelta_.Initialize(gainsDelta, ctrlData->dt, 0.1); // Initialize the PID controller for delta
 
     last_update_time = std::chrono::system_clock::now(); // Initialize time tracking
 
@@ -142,9 +149,17 @@ fsm::retval PathPlanningState::Execute() noexcept {
         ctrlData->velocityDesired(0) = -pidX_.Compute(0, positionXError_);
         ctrlData->velocityDesired(1) = -pidY_.Compute(0, positionYError_);
         ctrlData->velocityDesired(2) = -pidZ_.Compute(0, positionZError_);
-        ctrlData->velocityDesired(3) = -pidRoll_.Compute(0, rollError_);
-        ctrlData->velocityDesired(4) = -pidPitch_.Compute(0, pitchError_);
-        ctrlData->velocityDesired(5) = -pidYaw_.Compute(0, yawError_);
+        // Compute desired body angular velocities using PID controllers
+        Eigen::Vector3d wDesired = Eigen::Vector3d::Zero();
+        wDesired[0] = -pidRoll_.Compute(0, rollError_);   // Roll rate
+        wDesired[1] = -pidPitch_.Compute(0, pitchError_); // Pitch rate
+        wDesired[2] = -pidYaw_.Compute(0, yawError_);     // Yaw rate
+        // Convert body angular velocities to Euler angle rates
+        Eigen::Vector3d eulerRatesDesired = convertAngularVelocitiesToEulerRates(ctrlData->poseActual(3), ctrlData->poseActual(4), wDesired);
+        // Set the desired Euler angle rates
+        ctrlData->velocityDesired(3) = eulerRatesDesired[0]; // Desired roll rate
+        ctrlData->velocityDesired(4) = eulerRatesDesired[1]; // Desired pitch rate
+        ctrlData->velocityDesired(5) = eulerRatesDesired[2]; // Desired yaw rate
 
 
 
@@ -211,9 +226,17 @@ fsm::retval PathPlanningState::Execute() noexcept {
         ctrlData->velocityDesired(0) = -pidX_.Compute(0, positionXError_);
         ctrlData->velocityDesired(1) = -pidY_.Compute(0, positionYError_);
         ctrlData->velocityDesired(2) = -pidZ_.Compute(0, positionZError_);
-        ctrlData->velocityDesired(3) = -pidRoll_.Compute(0, rollError_);
-        ctrlData->velocityDesired(4) = -pidPitch_.Compute(0, pitchError_);
-        ctrlData->velocityDesired(5) = -pidYaw_.Compute(0, yawError_);
+        // Compute desired body angular velocities using PID controllers
+        Eigen::Vector3d wDesired = Eigen::Vector3d::Zero();
+        wDesired[0] = -pidRoll_.Compute(0, rollError_);   // Roll rate
+        wDesired[1] = -pidPitch_.Compute(0, pitchError_); // Pitch rate
+        wDesired[2] = -pidYaw_.Compute(0, yawError_);     // Yaw rate
+        // Convert body angular velocities to Euler angle rates
+        Eigen::Vector3d eulerRatesDesired = convertAngularVelocitiesToEulerRates(ctrlData->poseActual(3), ctrlData->poseActual(4), wDesired);
+        // Set the desired Euler angle rates
+        ctrlData->velocityDesired(3) = eulerRatesDesired[0]; // Desired roll rate
+        ctrlData->velocityDesired(4) = eulerRatesDesired[1]; // Desired pitch rate
+        ctrlData->velocityDesired(5) = eulerRatesDesired[2]; // Desired yaw rate
 
         // Evaluate derivatives at points of interest
         Eigen::Vector3d currentPosDot = path->Derivate(1, closestPointAbscissa_).front();
@@ -302,16 +325,13 @@ bool PathPlanningState::updateHeadingPitch(
     crossTrackError_ = positionError.dot(crossTrackVector);
     verticalTrackError_ = positionError.dot(verticalTrackVector);
 
-    // Time since last update
-    auto current_time = std::chrono::system_clock::now();
-    std::chrono::duration<double> time_elapsed = current_time - last_update_time;
-    last_update_time = current_time;
+
 
     // ALOS ON FOR HEADING
     RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Cross-track error: %f", crossTrackError_);
     if (fabs(crossTrackError_) > epsilon) {
         double modulation_factor = Delta / sqrt(Delta * Delta + crossTrackError_ * crossTrackError_);
-        betaHat_c += gamma_crosstrack * modulation_factor * crossTrackError_ * time_elapsed.count();
+        betaHat_c += gamma_crosstrack * modulation_factor * crossTrackError_ * ctrlData->dt;
         betaHat_c = std::clamp(betaHat_c, -0.4, 0.4);
         DesiredHeading -= betaHat_c - atan2(crossTrackError_, Delta);
     }
@@ -320,10 +340,31 @@ bool PathPlanningState::updateHeadingPitch(
     RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Vertical-track error: %f", verticalTrackError_);
     if (fabs(verticalTrackError_) > epsilon) {
         double modulation_factor_vertical = Delta / sqrt(Delta * Delta + verticalTrackError_ * verticalTrackError_);
-        thetaHat_c += gamma_verticaltrack * modulation_factor_vertical * verticalTrackError_ * time_elapsed.count();
+        thetaHat_c += gamma_verticaltrack * modulation_factor_vertical * verticalTrackError_ * ctrlData->dt;
         thetaHat_c = std::clamp(thetaHat_c, -0.83, 0.83);
         DesiredPitch -= thetaHat_c - atan2(verticalTrackError_, Delta);
     }
 
     return true;
+}
+
+// Function to convert body angular velocities to Euler angle rates
+Eigen::Vector3d PathPlanningState::convertAngularVelocitiesToEulerRates(double rollActual, double pitchActual, const Eigen::Vector3d& bOmegaDesired) {
+    // Check for singularity (cos(pitchActual) == 0)
+    if (std::abs(std::cos(pitchActual)) < 1e-6) {
+        RCLCPP_ERROR(rclcpp::get_logger("HoldState"), "Singularity detected: cos(pitchActual) is too close to zero. Returning zero Euler rates.");
+        // Return zero Euler rates as a fallback
+        return Eigen::Vector3d::Zero();
+    }
+
+    // Construct the inverse Jacobian matrix directly
+    Eigen::Matrix3d Jinv;
+    Jinv << 1, std::sin(rollActual) * std::tan(pitchActual), std::cos(rollActual) * std::tan(pitchActual),
+            0, std::cos(rollActual),                       -std::sin(rollActual),
+            0, std::sin(rollActual) / std::cos(pitchActual), std::cos(rollActual) / std::cos(pitchActual);
+
+    // Compute the desired Euler angle rates
+    Eigen::Vector3d eulerRatesDesired = Jinv * bOmegaDesired;
+
+    return eulerRatesDesired;
 }
