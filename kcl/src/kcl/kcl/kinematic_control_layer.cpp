@@ -145,6 +145,7 @@ void KCL::HandleControlCommand(
 
     // Transition to the requested state
     RCLCPP_INFO(this->get_logger(), "Transitioning to state: %s", request->state.c_str());
+    std::cout << "pathPlanningMode: " << ctrlData_->pathPlanningMode << std::endl;
     fsm_.SetNextState(request->state);
     fsm_.SwitchState();
 

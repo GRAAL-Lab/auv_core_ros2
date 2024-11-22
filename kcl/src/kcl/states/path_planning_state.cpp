@@ -5,38 +5,73 @@ PathPlanningState::PathPlanningState(fsm::FSM* fsm) : BaseAUVState(fsm, "PATH_PL
 }
 
 fsm::retval PathPlanningState::OnEntry() noexcept {
+    //print ctrlData all
+    std::cout << "ctrlDatapathPlanningMode: " << ctrlData->pathPlanningMode << std::endl;
     RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Entering PATH_PLANNING state");
     // std::string home_path = futils::get_homepath();
     // std::filesystem::create_directories(home_path);
+    RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), 
+            "Raw pathPlanningMode (enum): %d", 
+            static_cast<int>(ctrlData->pathPlanningMode));
+
+
     switch (static_cast<auv_core_helper::PathMode>(ctrlData->pathPlanningMode)) {
-        case auv_core_helper::PathMode::Helix3D: {
+        case auv_core_helper::PathMode::Helix3D : {
             RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Path Planning Helix 3D");
-            path = sisl::PathFactory::NewHelicalPath(ctrlData->helixStartPos, ctrlData->helixAxisPos, ctrlData->helixAxisDir, ctrlData->helixFrequency, ctrlData->helixNumQuadrants, ctrlData->helixCounterClockwise);
+            path = sisl::PathFactory::NewHelicalPath(
+                ctrlData->helixStartPos, 
+                ctrlData->helixAxisPos, 
+                ctrlData->helixAxisDir, 
+                ctrlData->helixFrequency, 
+                ctrlData->helixNumQuadrants, 
+                ctrlData->helixCounterClockwise
+            );
             break;
         }
-        case auv_core_helper::PathMode::Serpentine2D: {
+        case auv_core_helper::PathMode::Serpentine2D : {
             RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Path Planning Serpentine 2D");
             if (ctrlData->serpentinePolygonVertices.empty()) {
                 return fsm::fail;
             }
-            sisl::Path::Direction direction = ctrlData->serpentineDirection ? sisl::Path::Direction::Backward : sisl::Path::Direction::Forward;
-            path = sisl::PathFactory::NewSerpentine(ctrlData->serpentineAngle, direction, ctrlData->serpentineOffset, ctrlData->serpentinePolygonVertices);
+            sisl::Path::Direction direction = ctrlData->serpentineDirection
+                                                ? sisl::Path::Direction::Backward
+                                                : sisl::Path::Direction::Forward;
+            path = sisl::PathFactory::NewSerpentine(
+                ctrlData->serpentineAngle, 
+                direction, 
+                ctrlData->serpentineOffset, 
+                ctrlData->serpentinePolygonVertices
+            );
             break;
         }
-        case auv_core_helper::PathMode::Serpentine3D: {
-            RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Path Planning 3D Serpentine");
+        case auv_core_helper::PathMode::Serpentine3D : {
+            RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Path Planning Serpentine 3D");
             if (ctrlData->serpentinePolygonVertices.empty()) {
                 return fsm::fail;
             }
-            sisl::Path::Direction direction = ctrlData->serpentineDirection ? sisl::Path::Direction::Backward : sisl::Path::Direction::Forward;
-            path = sisl::PathFactory::New3DSerpentine(ctrlData->serpentineAngle, direction, ctrlData->serpentineOffset, ctrlData->serpentinePolygonVertices, ctrlData->diveDepth, ctrlData->curvature, ctrlData->dipNumPoints, ctrlData->diveLength);
+            sisl::Path::Direction direction = ctrlData->serpentineDirection
+                                                ? sisl::Path::Direction::Backward
+                                                : sisl::Path::Direction::Forward;
+            path = sisl::PathFactory::New3DSerpentine(
+                ctrlData->serpentineAngle, 
+                direction, 
+                ctrlData->serpentineOffset, 
+                ctrlData->serpentinePolygonVertices, 
+                ctrlData->diveDepth, 
+                ctrlData->curvature, 
+                ctrlData->dipNumPoints, 
+                ctrlData->diveLength
+            );
             break;
         }
         default: {
-            RCLCPP_ERROR(rclcpp::get_logger("PathPlanningState"), "Unknown Path Planning Mode: %d", ctrlData->pathPlanningMode);
-            return fsm::fail;
+            RCLCPP_ERROR(rclcpp::get_logger("PathPlanningState"), 
+                 "Unexpected pathPlanningMode in default case: %d", 
+                 static_cast<int>(ctrlData->pathPlanningMode));
+    return fsm::fail;
         }
     }
+
 
 
     if (!path) {
@@ -75,7 +110,6 @@ fsm::retval PathPlanningState::OnEntry() noexcept {
     ctb::PIDGains gainsPitch = {ctrlData->gainsPitch(0), ctrlData->gainsPitch(1), ctrlData->gainsPitch(2), ctrlData->gainsPitch(3), ctrlData->gainsPitch(4), ctrlData->gainsPitch(5)};
     ctb::PIDGains gainsYaw = {ctrlData->gainsYaw(0), ctrlData->gainsYaw(1), ctrlData->gainsYaw(2), ctrlData->gainsYaw(3), ctrlData->gainsYaw(4), ctrlData->gainsYaw(5)};
 
-    ctb::PIDGains gainsDelta = {0.0, 2.0, 0.0, 0.0, 0.0, 0.001};
     pidX_.Initialize(gainsX, ctrlData->dt, (ctrlData->maxVelocity(0) > std::abs(ctrlData->minVelocity(0))) ? ctrlData->maxVelocity(0) : std::abs(ctrlData->minVelocity(0))); // Initialize the PID controller for longitudinal position
     pidY_.Initialize(gainsY, ctrlData->dt, (ctrlData->maxVelocity(1) > std::abs(ctrlData->minVelocity(1))) ? ctrlData->maxVelocity(1) : std::abs(ctrlData->minVelocity(1))); // Initialize the PID controller for lateral position
     pidZ_.Initialize(gainsZ, ctrlData->dt, (ctrlData->maxVelocity(2) > std::abs(ctrlData->minVelocity(2))) ? ctrlData->maxVelocity(2) : std::abs(ctrlData->minVelocity(2))); // Initialize the PID controller for depth position
@@ -83,9 +117,14 @@ fsm::retval PathPlanningState::OnEntry() noexcept {
     pidPitch_.Initialize(gainsPitch, ctrlData->dt, (ctrlData->maxVelocity(4) > std::abs(ctrlData->minVelocity(4))) ? ctrlData->maxVelocity(4) : std::abs(ctrlData->minVelocity(4))); // Initialize the PID controller for pitch
     pidYaw_.Initialize(gainsYaw, ctrlData->dt, (ctrlData->maxVelocity(5) > std::abs(ctrlData->minVelocity(5))) ? ctrlData->maxVelocity(5) : std::abs(ctrlData->minVelocity(5))); // Initialize the PID controller for yaw
 
-    pidDelta_.Initialize(gainsDelta, ctrlData->dt, 0.1); // Initialize the PID controller for delta
+    // Load ALOS parameters
+    dynamic_goal_alos::DynamicGoalBasedALOSParams alosParams = dynamic_goal_alos::LoadALOSParamsFromConf("/home/usflinux/ros2_ws/src/auv_core_ros2/auv_core_helper/param/alosed_params");
 
-    last_update_time = std::chrono::system_clock::now(); // Initialize time tracking
+    // Initialize the ALOS controller using make_unique
+    alosController_ = std::make_unique<dynamic_goal_alos::DynamicGoalBasedALOS>(alosParams);
+
+    delta_ = alosParams.deltaMax; // Initialize delta to deltaMax
+
 
     return fsm::ok;
 }
@@ -189,12 +228,22 @@ fsm::retval PathPlanningState::Execute() noexcept {
         // Calculate cross-track error
         double psi_d = pi_h;
         double theta_psi_d = pi_p;
-        pi_p = std::clamp(pi_p, -0.610865, 0.610865);
-        updateHeadingPitch(ctrlData->poseActual.head(3), nextPoint, currentPoint, delta_, epsilon, psi_d, theta_psi_d, crossTrackError_, verticalTrackError_);
-        if (ctrlData->pathPlanningMode == 1){
-            theta_psi_d = pi_p;
+
+        bool alosSuccess = alosController_->ALOS3D(
+            ctrlData->poseActual.head(3), // currentPos
+            nextPoint,                    // goalPos
+            currentPoint,                 // closestPos
+            delta_,                       // delta
+            ctrlData->dt,                 // dt
+            theta_psi_d,
+            psi_d,
+            crossTrackError_,
+            verticalTrackError_);
+
+        if (!alosSuccess) {
+            RCLCPP_WARN(rclcpp::get_logger("PathPlanningState"), "ALOS3D failed to compute desired heading and pitch.");
+            return fsm::ok; // Or handle as necessary
         }
-        theta_psi_d = std::clamp(theta_psi_d, -0.610865, 0.610865);
 
         // Update the goal position and orientation
         ctrlData->poseGoal(0) = nextPoint.x(); // x coordinate
@@ -202,12 +251,12 @@ fsm::retval PathPlanningState::Execute() noexcept {
         ctrlData->poseGoal(2) = nextPoint.z(); // z coordinate
         ctrlData->poseGoal(3) = 0; // roll
         //ALOS OFF
-        ctrlData->poseGoal(4) = pi_p; // pitch
-        ctrlData->poseGoal(5) = pi_h; // yaw
+        // ctrlData->poseGoal(4) = pi_p; // pitch
+        // ctrlData->poseGoal(5) = pi_h; // yaw
 
         // ALOS ON
-        // ctrlData->poseGoal(4) = theta_psi_d;
-        // ctrlData->poseGoal(5) = psi_d;
+        ctrlData->poseGoal(4) = theta_psi_d;
+        ctrlData->poseGoal(5) = psi_d;
 
 
         // Compute errors and desired velocities for x, y, pitch, and yaw
@@ -249,12 +298,15 @@ fsm::retval PathPlanningState::Execute() noexcept {
         double tangentsDifferenceNorm = (goalDirection - currentDirection).norm();
 
 
-        double baseSetpoint = deltaMax_;
-        double errorMagnitude = (10.0 * fabs(crossTrackError_)) + (10.0 * fabs(verticalTrackError_)) + (30.0 * fabs(tangentsDifferenceNorm));
-        double IOutput = pidDelta_.Compute(baseSetpoint - errorMagnitude, delta_);
-        delta_ += IOutput; // Scale the PID output to modulate the control response
+        // double baseSetpoint = deltaMax_;
+        // double errorMagnitude = (10.0 * fabs(crossTrackError_)) + (10.0 * fabs(verticalTrackError_)) + (30.0 * fabs(tangentsDifferenceNorm));
+        // double IOutput = pidDelta_.Compute(baseSetpoint - errorMagnitude, delta_);
+        // delta_ += IOutput; // Scale the PID output to modulate the control response
+        // delta_ = std::clamp(delta_, deltaMin_, deltaMax_);
+        
+        // Update delta using the ALOS controller
+        delta_ = alosController_->UpdateLookAheadDistance(crossTrackError_, verticalTrackError_, tangentsDifferenceNorm);
 
-        delta_ = std::clamp(delta_, deltaMin_, deltaMax_);
         RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Delta: %f", delta_);
         RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Time: %f", ctrlData->timeActual.seconds());
         //compute how much of path is completed in %
@@ -279,70 +331,4 @@ fsm::retval PathPlanningState::OnExit() noexcept {
     closestPointAbscissa_ = 0.0;
     currentAbscissa_ = 0.0;
     return fsm::ok;
-}
-
-
-bool PathPlanningState::updateHeadingPitch(
-    const Eigen::Vector3d& currentPos,
-    const Eigen::Vector3d& goalPos,
-    const Eigen::Vector3d& closestPos,
-    double Delta,
-    double epsilon,
-    double& DesiredHeading,
-    double& DesiredPitch,
-    double& crossTrackError_,
-    double& verticalTrackError_)
-{
-    // Calculate the direction vector along the path
-    Eigen::Vector3d pathDirection = goalPos - closestPos;
-    if (pathDirection.norm() > std::numeric_limits<double>::epsilon()) {
-        pathDirection.normalize();
-    } else {
-        std::cerr << "Warning: Attempting to normalize a zero vector in pathDirection" << std::endl;
-        return false; // Early return or handle as necessary
-    }
-
-    // Calculate cross-track and vertical-track vectors
-    Eigen::Vector3d crossTrackVector = Eigen::Vector3d(0, 0, 1).cross(pathDirection);
-    if (crossTrackVector.norm() > std::numeric_limits<double>::epsilon()) {
-        crossTrackVector.normalize();
-    } else {
-        std::cerr << "Warning: Attempting to normalize a zero vector in crossTrackVector" << std::endl;
-        return false; // Early return or handle as necessary
-    }
-
-    Eigen::Vector3d verticalTrackVector = crossTrackVector.cross(pathDirection);
-    if (verticalTrackVector.norm() > std::numeric_limits<double>::epsilon()) {
-        verticalTrackVector.normalize();
-    } else {
-        std::cerr << "Warning: Attempting to normalize a zero vector in verticalTrackVector" << std::endl;
-        return false; // Early return or handle as necessary
-    }
-
-    // Calculate position errors
-    Eigen::Vector3d positionError = currentPos - closestPos;
-    crossTrackError_ = positionError.dot(crossTrackVector);
-    verticalTrackError_ = positionError.dot(verticalTrackVector);
-
-
-
-    // ALOS ON FOR HEADING
-    RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Cross-track error: %f", crossTrackError_);
-    if (fabs(crossTrackError_) > epsilon) {
-        double modulation_factor = Delta / sqrt(Delta * Delta + crossTrackError_ * crossTrackError_);
-        betaHat_c += gamma_crosstrack * modulation_factor * crossTrackError_ * ctrlData->dt;
-        betaHat_c = std::clamp(betaHat_c, -0.4, 0.4);
-        DesiredHeading -= betaHat_c - atan2(crossTrackError_, Delta);
-    }
-
-    // ALOS ON FOR PITCH
-    RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Vertical-track error: %f", verticalTrackError_);
-    if (fabs(verticalTrackError_) > epsilon) {
-        double modulation_factor_vertical = Delta / sqrt(Delta * Delta + verticalTrackError_ * verticalTrackError_);
-        thetaHat_c += gamma_verticaltrack * modulation_factor_vertical * verticalTrackError_ * ctrlData->dt;
-        thetaHat_c = std::clamp(thetaHat_c, -0.83, 0.83);
-        DesiredPitch -= thetaHat_c - atan2(verticalTrackError_, Delta);
-    }
-
-    return true;
 }

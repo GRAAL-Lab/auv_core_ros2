@@ -29,12 +29,12 @@ find_library(RML_LIBRARY NAMES rml)
 find_library(FSM_LIBRARY NAMES fsm)
 find_library(CTRL_LIBRARY NAMES ctrl_toolbox)
 find_library(IKCL_LIBRARY NAMES ikcl)
+find_library(DYNAMIC_GOAL_ALOS_LIBRARY NAMES dynamic_goal_ALOS REQUIRED)
 find_package(libconfig REQUIRED)
 include_directories(${libconfig_INCLUDE_DIRS})
 find_library(SISL_LIBRARY NAMES sisl_toolbox)
 find_package(rclcpp_lifecycle REQUIRED)
 find_package(nav_msgs REQUIRED)
-
 
 # Add files in the tree of "Projects" view in QtCreator
 file(GLOB_RECURSE SOURCE_FILES
@@ -52,11 +52,19 @@ include_directories(
   ${auv_core_helper_INCLUDE_DIRS}  # Include directories for auv_core_helper
 )
 
-# After find_package(auv_core_helper REQUIRED)
-message(STATUS "auv_core_helper_LIBRARIES: ${auv_core_helper_LIBRARIES}")
-
 # Add the library directory to the linker search paths (if necessary)
 link_directories(${CMAKE_INSTALL_PREFIX}/auv_core_helper/lib)
+
+# Set RPATH for both build and install phases
+set(CMAKE_SKIP_BUILD_RPATH FALSE)
+set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+set(CMAKE_BUILD_RPATH "$ORIGIN/../lib")
+set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib")
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+# Print RPATH for debugging
+message(STATUS "CMAKE_BUILD_RPATH: ${CMAKE_BUILD_RPATH}")
+message(STATUS "CMAKE_INSTALL_RPATH: ${CMAKE_INSTALL_RPATH}")
 
 # Define a static library for states classes
 add_library(states_lib STATIC
@@ -92,7 +100,8 @@ target_link_libraries(states_lib
   ${SISL_LIBRARY}
   ${IKCL_LIBRARY}
   ${CTRL_LIBRARY}
-  ${auv_core_helper_LIBRARIES}  # Link against auv_core_helper
+  ${auv_core_helper_LIBRARIES}
+  ${DYNAMIC_GOAL_ALOS_LIBRARY}
 )
 
 # Define executables for various nodes
@@ -121,22 +130,20 @@ foreach(target kinematic_control_layer_node interface_node)
     Eigen3
     sensor_msgs
     tf2_geometry_msgs
-    auv_core_helper  # Ensure auv_core_helper dependency is added
+    auv_core_helper
     rclcpp_lifecycle
     nav_msgs
   )
-  target_include_directories(${target} PRIVATE ${EIGEN3_INCLUDE_DIR})
+  target_link_libraries(${target}
+    ${FSM_LIBRARY}
+    ${RML_LIBRARY}
+    ${SISL_LIBRARY}
+    ${IKCL_LIBRARY}
+    ${CTRL_LIBRARY}
+    ${DYNAMIC_GOAL_ALOS_LIBRARY}
+    ${auv_core_helper_LIBRARIES}
+  )
 endforeach()
-
-# Link libraries specific to executables
-target_link_libraries(kinematic_control_layer_node
-  ${FSM_LIBRARY}
-  ${RML_LIBRARY}
-  ${SISL_LIBRARY}
-  ${IKCL_LIBRARY}
-  ${CTRL_LIBRARY}
-  ${auv_core_helper_LIBRARIES}  # Use exported variables
-)
 
 # Install the kcl executable
 install(TARGETS kinematic_control_layer_node interface_node
