@@ -69,7 +69,7 @@ fsm::retval HoldState::Execute() noexcept {
     wDesired[1] = -pidPitch_.Compute(0, pitchError_); // Pitch rate
     wDesired[2] = -pidYaw_.Compute(0, yawError_);     // Yaw rate
     // Convert body angular velocities to Euler angle rates
-    Eigen::Vector3d eulerRatesDesired = convertAngularVelocitiesToEulerRates(ctrlData->poseActual(3), ctrlData->poseActual(4), wDesired);
+    Eigen::Vector3d eulerRatesDesired = ConvertAngularVelocitiesToEulerRates(ctrlData->poseActual(3), ctrlData->poseActual(4), wDesired);
     // Set the desired Euler angle rates
     ctrlData->velocityDesired(3) = eulerRatesDesired[0]; // Desired roll rate
     ctrlData->velocityDesired(4) = eulerRatesDesired[1]; // Desired pitch rate
@@ -95,25 +95,4 @@ fsm::retval HoldState::OnExit() noexcept {
 
     // No specific cleanup is needed in this implementation
     return fsm::ok;
-}
-
-// Function to convert body angular velocities to Euler angle rates
-Eigen::Vector3d HoldState::convertAngularVelocitiesToEulerRates(double rollActual, double pitchActual, const Eigen::Vector3d& bOmegaDesired) {
-    // Check for singularity (cos(pitchActual) == 0)
-    if (std::abs(std::cos(pitchActual)) < 1e-6) {
-        RCLCPP_ERROR(rclcpp::get_logger("HoldState"), "Singularity detected: cos(pitchActual) is too close to zero. Returning zero Euler rates.");
-        // Return zero Euler rates as a fallback
-        return Eigen::Vector3d::Zero();
-    }
-
-    // Construct the inverse Jacobian matrix directly
-    Eigen::Matrix3d Jinv;
-    Jinv << 1, std::sin(rollActual) * std::tan(pitchActual), std::cos(rollActual) * std::tan(pitchActual),
-            0, std::cos(rollActual),                       -std::sin(rollActual),
-            0, std::sin(rollActual) / std::cos(pitchActual), std::cos(rollActual) / std::cos(pitchActual);
-
-    // Compute the desired Euler angle rates
-    Eigen::Vector3d eulerRatesDesired = Jinv * bOmegaDesired;
-
-    return eulerRatesDesired;
 }

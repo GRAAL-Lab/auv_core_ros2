@@ -84,16 +84,6 @@ private:
         double& crossTrackError_,
         double& verticalTrackError_);
 
-    /// Converts body angular velocities to Euler angle rates.
-    /// @param rollActual The actual roll angle.
-    /// @param pitchActual The actual pitch angle.
-    /// @param bOmegaDesired The desired body angular velocities.
-    /// @return The Euler angle rates.
-    Eigen::Vector3d convertAngularVelocitiesToEulerRates(
-        double rollActual,
-        double pitchActual,
-        const Eigen::Vector3d& bOmegaDesired);
-
 public:
     /// Constructor
     explicit PathPlanningState(fsm::FSM* fsm);

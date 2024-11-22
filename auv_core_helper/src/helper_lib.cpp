@@ -338,3 +338,24 @@ void MapJoystickToVelocity(const std::vector<float>& axes, geometry_msgs::msg::T
         velocity_desired->angular.y = 0;
     }
 }
+
+// Function to convert body angular velocities to Euler angle rates
+Eigen::Vector3d ConvertAngularVelocitiesToEulerRates(double rollActual, double pitchActual, const Eigen::Vector3d& bOmegaDesired) {
+    // Check for singularity (cos(pitchActual) == 0)
+    if (std::abs(std::cos(pitchActual)) < 1e-6) {
+        std::cerr << "Singularity detected: cos(pitchActual) is too close to zero. Returning zero Euler rates." << std::endl;
+        // Return zero Euler rates as a fallback
+        return Eigen::Vector3d::Zero();
+    }
+
+    // Construct the inverse Jacobian matrix directly
+    Eigen::Matrix3d Jinv;
+    Jinv << 1, std::sin(rollActual) * std::tan(pitchActual), std::cos(rollActual) * std::tan(pitchActual),
+            0, std::cos(rollActual),                       -std::sin(rollActual),
+            0, std::sin(rollActual) / std::cos(pitchActual), std::cos(rollActual) / std::cos(pitchActual);
+
+    // Compute the desired Euler angle rates
+    Eigen::Vector3d eulerRatesDesired = Jinv * bOmegaDesired;
+
+    return eulerRatesDesired;
+}
