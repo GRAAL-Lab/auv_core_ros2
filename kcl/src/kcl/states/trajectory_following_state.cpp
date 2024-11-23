@@ -1,11 +1,11 @@
-#include "states/trajectory_planning_state.hpp"
+#include "states/trajectory_following_state.hpp"
 
 // Constructor
-TrajectoryPlanningState::TrajectoryPlanningState(fsm::FSM* fsm)
+TrajectoryFollowingState::TrajectoryFollowingState(fsm::FSM* fsm)
     : BaseAUVState(fsm, States::TRAJECTORY_FOLLOWING), tTotal_(0.0), tCurrentStart_(0.0) {}
 
 // OnEntry
-fsm::retval TrajectoryPlanningState::OnEntry() {
+fsm::retval TrajectoryFollowingState::OnEntry() {
     tTotal_ = ctrlData->tpGoalTime;                    // Total duration of the trajectory in seconds
     tCurrentStart_ = ctrlData->timeActual.seconds();  // Capture the start time of the trajectory
     poseInitial_ = ctrlData->poseActual;              // Store the initial pose
@@ -14,7 +14,7 @@ fsm::retval TrajectoryPlanningState::OnEntry() {
 }
 
 // Execute
-fsm::retval TrajectoryPlanningState::Execute() {
+fsm::retval TrajectoryFollowingState::Execute() {
     double tCurrent = ctrlData->timeActual.seconds() - tCurrentStart_; // Current elapsed time
 
     if (tCurrent >= tTotal_) {
@@ -40,12 +40,12 @@ fsm::retval TrajectoryPlanningState::Execute() {
 }
 
 // OnExit
-fsm::retval TrajectoryPlanningState::OnExit() {
+fsm::retval TrajectoryFollowingState::OnExit() {
     return fsm::ok;
 }
 
 // FindNextTrajectoryPoint
-Eigen::Matrix<double, 6, 1> TrajectoryPlanningState::FindNextTrajectoryPoint(
+Eigen::Matrix<double, 6, 1> TrajectoryFollowingState::FindNextTrajectoryPoint(
     const Eigen::Matrix<double, 6, 1>& poseInitial_,
     const Eigen::Matrix<double, 6, 1>& poseGoal_,
     double tTotal_,

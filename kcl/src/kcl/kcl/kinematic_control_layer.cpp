@@ -161,21 +161,21 @@ void KCL::SetupTransitions() {
     idleState_ = std::make_unique<IdleState>(&fsm_);
     holdState_ = std::make_unique<HoldState>(&fsm_);
     joystickState_ = std::make_unique<JoystickState>(&fsm_);
-    trajectoryPlanningState_ = std::make_unique<TrajectoryPlanningState>(&fsm_);
+    trajectoryFollowingState_ = std::make_unique<TrajectoryFollowingState>(&fsm_);
     pathFollowingState_ = std::make_unique<PathFollowingState>(&fsm_);
 
     // Share control data with states
     idleState_->ctrlData = ctrlData_;
     holdState_->ctrlData = ctrlData_;
     joystickState_->ctrlData = ctrlData_;
-    trajectoryPlanningState_->ctrlData = ctrlData_;
+    trajectoryFollowingState_->ctrlData = ctrlData_;
     pathFollowingState_->ctrlData = ctrlData_;
 
     // Add states and enable transitions
     fsm_.AddState(States::IDLE, idleState_.get());
     fsm_.AddState(States::HOLD, holdState_.get());
     fsm_.AddState(States::JOYSTICK, joystickState_.get());
-    fsm_.AddState(States::TRAJECTORY_FOLLOWING, trajectoryPlanningState_.get());
+    fsm_.AddState(States::TRAJECTORY_FOLLOWING, trajectoryFollowingState_.get());
     fsm_.AddState(States::PATH_FOLLOWING, pathFollowingState_.get());
 
     // Enable transitions
