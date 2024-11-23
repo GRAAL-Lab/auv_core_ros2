@@ -98,8 +98,9 @@ void InterfaceNode::ProcessStateAndSendRequest(const std::string& state) {
     } else if (state == States::PATH_FOLLOWING) {
         GatherPathDetails();
     }
-
-    SendServiceRequest(state, coordinates, timeToReach);
+    else {
+        SendServiceRequest(state, coordinates, timeToReach);
+    }
 }
 
 void InterfaceNode::GatherPathDetails() {
@@ -314,15 +315,15 @@ void InterfaceNode::SendPathRequest() {
     request->path_planning_2d_3d = pathChoice_;
 
     // Use a switch statement to handle the path choice
-    switch (static_cast<auv_core_helper::PathMode>(pathChoice_)) {
-        case auv_core_helper::PathMode::Serpentine2D: { // 2D Serpentine path
+    switch (pathChoice_) {
+        case auv_core_helper::Serpentine2D: { // 2D Serpentine path
             request->serpentine_angle = serpentineAngle_;
             request->serpentine_direction = serpentineDirection_;
             request->serpentine_offset = serpentineOffset_;
             request->serpentine_polygon_vertices = serpentinePolygonVertices_;
             break;
         }
-        case auv_core_helper::PathMode::Serpentine3D: { // 3D Serpentine path
+        case auv_core_helper::Serpentine3D: { // 3D Serpentine path
             request->serpentine_angle = serpentineAngle_;
             request->serpentine_direction = serpentineDirection_;
             request->serpentine_offset = serpentineOffset_;
@@ -333,7 +334,7 @@ void InterfaceNode::SendPathRequest() {
             request->dive_length = diveLength_;
             break;
         }
-        case auv_core_helper::PathMode::Helix3D: { // 3D Helix path
+        case auv_core_helper::Helix3D: { // 3D Helix path
             request->helix_start_pos = helixStartPosition_;
             request->helix_axis_pos = helixAxisPosition_;
             request->helix_axis_dir = helixAxisDirection_;

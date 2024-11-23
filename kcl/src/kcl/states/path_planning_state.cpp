@@ -5,18 +5,13 @@ PathPlanningState::PathPlanningState(fsm::FSM* fsm) : BaseAUVState(fsm, "PATH_PL
 }
 
 fsm::retval PathPlanningState::OnEntry() noexcept {
-    //print ctrlData all
-    std::cout << "ctrlDatapathPlanningMode: " << ctrlData->pathPlanningMode << std::endl;
     RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Entering PATH_PLANNING state");
     // std::string home_path = futils::get_homepath();
     // std::filesystem::create_directories(home_path);
-    RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), 
-            "Raw pathPlanningMode (enum): %d", 
-            static_cast<int>(ctrlData->pathPlanningMode));
 
 
-    switch (static_cast<auv_core_helper::PathMode>(ctrlData->pathPlanningMode)) {
-        case auv_core_helper::PathMode::Helix3D : {
+    switch (ctrlData->pathPlanningMode) {
+        case auv_core_helper::Helix3D : {
             RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Path Planning Helix 3D");
             path = sisl::PathFactory::NewHelicalPath(
                 ctrlData->helixStartPos, 
@@ -28,7 +23,7 @@ fsm::retval PathPlanningState::OnEntry() noexcept {
             );
             break;
         }
-        case auv_core_helper::PathMode::Serpentine2D : {
+        case auv_core_helper::Serpentine2D : {
             RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Path Planning Serpentine 2D");
             if (ctrlData->serpentinePolygonVertices.empty()) {
                 return fsm::fail;
@@ -44,7 +39,7 @@ fsm::retval PathPlanningState::OnEntry() noexcept {
             );
             break;
         }
-        case auv_core_helper::PathMode::Serpentine3D : {
+        case auv_core_helper::Serpentine3D : {
             RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Path Planning Serpentine 3D");
             if (ctrlData->serpentinePolygonVertices.empty()) {
                 return fsm::fail;

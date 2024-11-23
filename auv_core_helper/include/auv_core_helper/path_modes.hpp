@@ -3,7 +3,7 @@
 
 namespace auv_core_helper {
 
-enum class PathMode {
+enum PathMode { // Changed from `enum class` to `enum`
     Serpentine2D = 1,
     Serpentine3D = 2,
     Helix3D = 3

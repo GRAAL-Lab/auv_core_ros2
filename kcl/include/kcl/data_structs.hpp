@@ -33,7 +33,7 @@ struct ControlData {
     // ------------------------------
     // Path Planning Parameters
     // ------------------------------
-    int pathPlanningMode = 0; ///< Path planning mode: 2D (0) or 3D (1).
+    int pathPlanningMode = 1; ///< Path planning mode: 2D (0) or 3D (1).
 
     // 2D Serpentine Path Parameters
     double serpentineAngle = 0.0; ///< Angle for 2D serpentine path planning.

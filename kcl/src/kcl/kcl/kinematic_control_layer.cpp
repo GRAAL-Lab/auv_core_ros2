@@ -98,9 +98,10 @@ void KCL::HandleControlCommand(
         ctrlData_->pathPlanningMode = request->path_planning_2d_3d;
 
         // Use a switch statement to handle path planning modes
-        switch (static_cast<auv_core_helper::PathMode>(ctrlData_->pathPlanningMode)) {
-            case auv_core_helper::PathMode::Helix3D: {
+        switch (ctrlData_->pathPlanningMode) {
+            case auv_core_helper::Helix3D: {
                 // Handle 3D Helix Path Following
+                // RCLCPP_INFO(this->get_logger(), "Helix path following requested");
                 ctrlData_->helixStartPos = {request->helix_start_pos.x, request->helix_start_pos.y, request->helix_start_pos.z};
                 ctrlData_->helixAxisPos = {request->helix_axis_pos.x, request->helix_axis_pos.y, request->helix_axis_pos.z};
                 ctrlData_->helixAxisDir = {request->helix_axis_dir.x, request->helix_axis_dir.y, request->helix_axis_dir.z};
@@ -109,8 +110,9 @@ void KCL::HandleControlCommand(
                 ctrlData_->helixCounterClockwise = request->helix_counter_clockwise;
                 break;
             }
-            case auv_core_helper::PathMode::Serpentine2D: {
+            case auv_core_helper::Serpentine2D: {
                 // Handle 2D Serpentine Path Following
+                // RCLCPP_INFO(this->get_logger(), "2D Serpentine path following requested");
                 ctrlData_->serpentineAngle = request->serpentine_angle;
                 ctrlData_->serpentineDirection = request->serpentine_direction;
                 ctrlData_->serpentineOffset = request->serpentine_offset;
@@ -120,8 +122,9 @@ void KCL::HandleControlCommand(
                 }
                 break;
             }
-            case auv_core_helper::PathMode::Serpentine3D: {
+            case auv_core_helper::Serpentine3D: {
                 // Handle 3D Serpentine Path Following
+                // RCLCPP_INFO(this->get_logger(), "3D Serpentine path following requested");
                 ctrlData_->serpentineAngle = request->serpentine_angle;
                 ctrlData_->serpentineDirection = request->serpentine_direction;
                 ctrlData_->serpentineOffset = request->serpentine_offset;
