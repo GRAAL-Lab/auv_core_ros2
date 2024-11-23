@@ -1,18 +1,18 @@
-#include "states/path_planning_state.hpp"
+#include "states/path_following_state.hpp"
 
 // Constructor
-PathPlanningState::PathPlanningState(fsm::FSM* fsm) : BaseAUVState(fsm, "PATH_PLANNING") {
+PathFollowingState::PathFollowingState(fsm::FSM* fsm) : BaseAUVState(fsm, "PATH_FOLLOWING") {
 }
 
-fsm::retval PathPlanningState::OnEntry() noexcept {
-    RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Entering PATH_PLANNING state");
+fsm::retval PathFollowingState::OnEntry() noexcept {
+    RCLCPP_INFO(rclcpp::get_logger("PathFollowingState"), "Entering PATH_FOLLOWING state");
     // std::string home_path = futils::get_homepath();
     // std::filesystem::create_directories(home_path);
 
 
     switch (ctrlData->pathPlanningMode) {
         case auv_core_helper::Helix3D : {
-            RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Path Planning Helix 3D");
+            RCLCPP_INFO(rclcpp::get_logger("PathFollowingState"), "Path Planning Helix 3D");
             path = sisl::PathFactory::NewHelicalPath(
                 ctrlData->helixStartPos, 
                 ctrlData->helixAxisPos, 
@@ -24,7 +24,7 @@ fsm::retval PathPlanningState::OnEntry() noexcept {
             break;
         }
         case auv_core_helper::Serpentine2D : {
-            RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Path Planning Serpentine 2D");
+            RCLCPP_INFO(rclcpp::get_logger("PathFollowingState"), "Path Planning Serpentine 2D");
             if (ctrlData->serpentinePolygonVertices.empty()) {
                 return fsm::fail;
             }
@@ -40,7 +40,7 @@ fsm::retval PathPlanningState::OnEntry() noexcept {
             break;
         }
         case auv_core_helper::Serpentine3D : {
-            RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Path Planning Serpentine 3D");
+            RCLCPP_INFO(rclcpp::get_logger("PathFollowingState"), "Path Planning Serpentine 3D");
             if (ctrlData->serpentinePolygonVertices.empty()) {
                 return fsm::fail;
             }
@@ -60,7 +60,7 @@ fsm::retval PathPlanningState::OnEntry() noexcept {
             break;
         }
         default: {
-            RCLCPP_ERROR(rclcpp::get_logger("PathPlanningState"), 
+            RCLCPP_ERROR(rclcpp::get_logger("PathFollowingState"), 
                  "Unexpected pathPlanningMode in default case: %d", 
                  static_cast<int>(ctrlData->pathPlanningMode));
     return fsm::fail;
@@ -76,7 +76,7 @@ fsm::retval PathPlanningState::OnEntry() noexcept {
     // Sample and convert path to nav_msgs::Path
     auto sampledPointsSharedPtr = path->Sampling(1500);
     if (!sampledPointsSharedPtr || sampledPointsSharedPtr->empty()) {
-        RCLCPP_ERROR(rclcpp::get_logger("PathPlanningState"), "Failed to sample points from SISL path.");
+        RCLCPP_ERROR(rclcpp::get_logger("PathFollowingState"), "Failed to sample points from SISL path.");
         return fsm::fail;
     }
 
@@ -94,7 +94,7 @@ fsm::retval PathPlanningState::OnEntry() noexcept {
     }
     ctrlData->plannedPath = nav_path;
     isCurveSet_ = true;
-    RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Path set and vehicle is ready");
+    RCLCPP_INFO(rclcpp::get_logger("PathFollowingState"), "Path set and vehicle is ready");
     // PersistenceManager::SaveObj(path->Sampling(30000), home_path + "/path.txt");
 
     // Initialize PID controllers
@@ -126,18 +126,18 @@ fsm::retval PathPlanningState::OnEntry() noexcept {
 
 
 
-fsm::retval PathPlanningState::Execute() noexcept { 
+fsm::retval PathFollowingState::Execute() noexcept { 
     static bool initial_time_set = false;
     static rclcpp::Time previous_time;
 
     if (!isCurveSet_) {
-        RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Curve is not set. Waiting for curve to be set.");
+        RCLCPP_INFO(rclcpp::get_logger("PathFollowingState"), "Curve is not set. Waiting for curve to be set.");
         return fsm::ok; // Keep trying in the next cycles
     }
 
     // Check if the simulation time has been published
     while (ctrlData->timeActual.nanoseconds() < 0) {
-        RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Waiting for simulation time to be published...");
+        RCLCPP_INFO(rclcpp::get_logger("PathFollowingState"), "Waiting for simulation time to be published...");
         return fsm::ok; // Keep trying in the next cycles
     }
 
@@ -198,7 +198,7 @@ fsm::retval PathPlanningState::Execute() noexcept {
 
         // Check if vehicle has reached the starting point and aligned with path direction
         if (positionXError_ < 0.1 && positionYError_ < 0.1 && positionZError_ < 0.1 && rollError_ < 0.1 && yawError_ < 0.1 && pitchError_ < 0.1){
-            RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Vehicle reached starting point and in direction of the path");
+            RCLCPP_INFO(rclcpp::get_logger("PathFollowingState"), "Vehicle reached starting point and in direction of the path");
                 ctrlData->velocityDesired.setZero();
                 isVehicleOnPathDirection_ = true;
         }
@@ -236,7 +236,7 @@ fsm::retval PathPlanningState::Execute() noexcept {
             verticalTrackError_);
 
         if (!alosSuccess) {
-            RCLCPP_WARN(rclcpp::get_logger("PathPlanningState"), "ALOS3D failed to compute desired heading and pitch.");
+            RCLCPP_WARN(rclcpp::get_logger("PathFollowingState"), "ALOS3D failed to compute desired heading and pitch.");
             return fsm::ok; // Or handle as necessary
         }
 
@@ -302,16 +302,16 @@ fsm::retval PathPlanningState::Execute() noexcept {
         // Update delta using the ALOS controller
         delta_ = alosController_->UpdateLookAheadDistance(crossTrackError_, verticalTrackError_, tangentsDifferenceNorm);
 
-        RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Delta: %f", delta_);
-        RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Time: %f", ctrlData->timeActual.seconds());
+        RCLCPP_INFO(rclcpp::get_logger("PathFollowingState"), "Delta: %f", delta_);
+        RCLCPP_INFO(rclcpp::get_logger("PathFollowingState"), "Time: %f", ctrlData->timeActual.seconds());
         //compute how much of path is completed in %
         double path_completed = (closestPointAbscissa_ / path->EndParameter()) * 100;
-        RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Path completed: %f", path_completed);
+        RCLCPP_INFO(rclcpp::get_logger("PathFollowingState"), "Path completed: %f", path_completed);
 
         // Update the current abscissa to the abscissa of the closest point, preparing for the next update cycle
         currentAbscissa_ = closestPointAbscissa_;
         if (currentAbscissa_ >= path->EndParameter()) {// this has an segmentation error when path has finished, check it
-            RCLCPP_INFO(rclcpp::get_logger("PathPlanningState"), "Path has ended");
+            RCLCPP_INFO(rclcpp::get_logger("PathFollowingState"), "Path has ended");
             fsm_->SetNextState(States::HOLD);
         }
 
@@ -320,7 +320,7 @@ fsm::retval PathPlanningState::Execute() noexcept {
 }
 
 
-fsm::retval PathPlanningState::OnExit() noexcept {
+fsm::retval PathFollowingState::OnExit() noexcept {
     ctrlData->plannedPath.poses.clear();
     isVehicleOnPathDirection_ = false;
     closestPointAbscissa_ = 0.0;

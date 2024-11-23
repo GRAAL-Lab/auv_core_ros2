@@ -16,9 +16,9 @@
 #include <dynamic_goal_ALOS.hpp>
 
 
-/// The `PathPlanningState` class manages the autonomous path planning behavior of the AUV.
+/// The `PathFollowingState` class manages the autonomous path following behavior of the AUV.
 /// It supports various path types (e.g., serpentine, helical) and uses PID controllers for guidance.
-class PathPlanningState : public BaseAUVState {
+class PathFollowingState : public BaseAUVState {
 private:
     // Path-related variables
     std::shared_ptr<sisl::Path> path; ///< SISL-generated path.
@@ -56,14 +56,14 @@ private:
 
 public:
     /// Constructor
-    explicit PathPlanningState(fsm::FSM* fsm);
+    explicit PathFollowingState(fsm::FSM* fsm);
 
-    /// Called when entering the path planning state.
+    /// Called when entering the path following state.
     fsm::retval OnEntry() noexcept override;
 
-    /// Called repeatedly during the path planning state.
+    /// Called repeatedly during the path following state.
     fsm::retval Execute() noexcept override;
 
-    /// Called when exiting the path planning state.
+    /// Called when exiting the path following state.
     fsm::retval OnExit() noexcept override;
 };

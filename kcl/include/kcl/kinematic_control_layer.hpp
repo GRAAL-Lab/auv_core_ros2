@@ -23,7 +23,7 @@
 #include "states/hold_state.hpp"
 #include "states/joystick_state.hpp"
 #include "states/trajectory_planning_state.hpp"
-#include "states/path_planning_state.hpp"
+#include "states/path_following_state.hpp"
 #include "states/commands.hpp"
 
 // AUV-specific topic names
@@ -51,7 +51,7 @@ private:
     std::unique_ptr<HoldState> holdState_;
     std::unique_ptr<JoystickState> joystickState_;
     std::unique_ptr<TrajectoryPlanningState> trajectoryPlanningState_;
-    std::unique_ptr<PathPlanningState> pathPlanningState_;
+    std::unique_ptr<PathFollowingState> pathFollowingState_;
 
     // --------------------
     // ROS 2 Publishers

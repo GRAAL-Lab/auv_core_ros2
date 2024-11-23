@@ -72,7 +72,7 @@ add_library(states_lib STATIC
   src/kcl/states/idle_state.cpp
   src/kcl/states/joystick_state.cpp
   src/kcl/states/trajectory_planning_state.cpp
-  src/kcl/states/path_planning_state.cpp
+  src/kcl/states/path_following_state.cpp
   src/kcl/states/hold_state.cpp
 )
 target_include_directories(states_lib PUBLIC
@@ -111,7 +111,7 @@ add_executable(kinematic_control_layer_node
     src/kcl/states/idle_state.cpp
     src/kcl/states/joystick_state.cpp
     src/kcl/states/trajectory_planning_state.cpp
-    src/kcl/states/path_planning_state.cpp
+    src/kcl/states/path_following_state.cpp
     src/kcl/states/hold_state.cpp
     src/kcl/kcl/kinematic_control_layer.cpp
 )
