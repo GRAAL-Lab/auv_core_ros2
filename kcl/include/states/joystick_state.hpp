@@ -21,4 +21,12 @@ public:
     /// Called when the AUV exits the joystick control state.
     /// Can be used to reset joystick-related state or perform cleanup.
     fsm::retval OnExit() noexcept override;
+
+
+    /// Maps joystick axes to desired velocity components.
+    /// @param axes Vector of joystick axes values.
+    /// @param velocity_desired Pointer to the desired velocity message to update.
+    void MapJoystickToVelocity(const std::vector<float>& axes, geometry_msgs::msg::Twist* velocity_desired);
+
 };
+

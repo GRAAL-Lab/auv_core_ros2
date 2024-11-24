@@ -65,8 +65,8 @@ KCL::KCL(const std::string& configName)
 }
 
 void KCL::JoyStickCallback(const sensor_msgs::msg::Joy::SharedPtr msg) {
-    // Map joystick axes data to desired velocity
-    MapJoystickToVelocity(msg->axes, &ctrlData_->joystickVelocityDesired);
+    // Update joystick data in control data
+    ctrlData_->joystickAxes = msg->axes;
 }
 
 void KCL::PoseActualCallback(const auv_core_helper::msg::PoseStamped::SharedPtr msg) {
