@@ -24,14 +24,12 @@ find_package(auv_core_helper REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(ament_index_cpp REQUIRED)
-find_library(QPOASES_LIBRARY NAMES qpOASES)
 find_library(RML_LIBRARY NAMES rml)
 find_library(FSM_LIBRARY NAMES fsm)
 find_library(CTRL_LIBRARY NAMES ctrl_toolbox)
 find_library(IKCL_LIBRARY NAMES ikcl)
 find_library(DYNAMIC_GOAL_ALOS_LIBRARY NAMES dynamic_goal_ALOS REQUIRED)
-find_package(libconfig REQUIRED)
-include_directories(${libconfig_INCLUDE_DIRS})
+find_package(PkgConfig REQUIRED)
 find_library(SISL_LIBRARY NAMES sisl_toolbox)
 find_package(rclcpp_lifecycle REQUIRED)
 find_package(nav_msgs REQUIRED)
@@ -94,7 +92,6 @@ ament_target_dependencies(states_lib
   nav_msgs
 )
 target_link_libraries(states_lib
-  ${QPOASES_LIBRARY}
   ${ament_index_cpp_LIBRARIES}
   ${RML_LIBRARY}
   ${SISL_LIBRARY}

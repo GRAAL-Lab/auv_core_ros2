@@ -219,7 +219,7 @@ void KCL::ExecuteFSM() {
     PublishEigenPose(poseGoalPublisher_, ctrlData_->poseGoal, this->get_clock()->now());
 
     // Scale desired velocity within limits
-    rml::SaturateVectorWithinLimits(ctrlData_->maxVelocity, ctrlData_->minVelocity, ctrlData_->velocityDesired);
+    rml::SaturateVector(ctrlData_->maxVelocity, ctrlData_->minVelocity, ctrlData_->velocityDesired);
 
     // Publish desired velocity
     PublishEigenVelocity(velocityDesiredPublisher_, ctrlData_->velocityDesired);

@@ -20,7 +20,7 @@ find_package(geometry_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(ament_index_cpp REQUIRED)
-find_package(libconfig REQUIRED)
+find_package(PkgConfig REQUIRED)
 
 # Manually find qpOASES library
 find_library(QPOASES_LIBRARY NAMES qpOASES REQUIRED)
@@ -45,7 +45,7 @@ ament_target_dependencies(${PROJECT_NAME}_lib
   Eigen3
   rclcpp
   geometry_msgs
-  libconfig
+  PkgConfig
   rosidl_default_runtime
 )
 
@@ -56,7 +56,7 @@ target_include_directories(${PROJECT_NAME}_lib PUBLIC
   $<INSTALL_INTERFACE:include>
   ${EIGEN3_INCLUDE_DIRS}
   ${ament_index_cpp_INCLUDE_DIRS}
-  ${libconfig_INCLUDE_DIRS}
+  ${PkgConfig_INCLUDE_DIRS}
 )
 
 # Link additional libraries
@@ -70,7 +70,7 @@ ament_export_dependencies(
   rosidl_default_runtime
   std_msgs
   geometry_msgs
-  libconfig
+  PkgConfig
   rclcpp
   Eigen3
 )
