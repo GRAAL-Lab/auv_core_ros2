@@ -5,6 +5,15 @@
 /// The `JoystickState` class represents a state where the AUV is controlled via joystick input.
 /// In this state, the desired velocities are directly set from joystick commands.
 class JoystickState : public BaseAUVState {
+private:
+    // Map to store joystick calibration mappings (axis or button to action)
+    std::map<std::string, int>  joystickCalibration;
+
+    // Map to store maximum values for each action
+    std::map<std::string, double> joystickMaxValues;
+
+    // Example structure for joystick buttons (if needed for future use)
+    std::vector<int> joystickButtons;
 public:
     /// Constructor for the `JoystickState` class.
     /// @param fsm Pointer to the FSM controlling this state.
@@ -21,6 +30,10 @@ public:
     /// Called when the AUV exits the joystick control state.
     /// Can be used to reset joystick-related state or perform cleanup.
     fsm::retval OnExit() noexcept override;
+
+
+    /// Calibrates the joystick by mapping axes to desired velocity components.
+    void CalibrateJoystick();
 
 
     /// Maps joystick axes to desired velocity components.

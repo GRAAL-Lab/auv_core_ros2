@@ -1,5 +1,4 @@
 #include "states/joystick_state.hpp"
-#include <iostream>
 
 // Constructor
 JoystickState::JoystickState(fsm::FSM* fsm)
@@ -17,6 +16,10 @@ fsm::retval JoystickState::OnEntry() noexcept {
 
     // Reset pose goal to zero
     ctrlData->poseGoal.setZero();
+
+    
+    CalibrateJoystick();
+
 
     return fsm::ok;
 }
@@ -56,6 +59,60 @@ fsm::retval JoystickState::OnExit() noexcept {
     // No specific cleanup is needed in this implementation
     return fsm::ok;
 }
+
+
+// Calibrate joystick inputs
+void JoystickState::CalibrateJoystick() {
+    RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "Starting joystick calibration...");
+
+    // List of calibration steps
+    std::vector<std::string> calibrationSteps = {
+        "Move forward axis to maximum forward",
+        "Move forward axis to maximum backward",
+        "Yaw maximum clockwise",
+        "Yaw maximum counter-clockwise",
+        "Up maximum forward",
+        "Down maximum backward",
+        "Right maximum",
+        "Left maximum",
+        "Roll maximum clockwise",
+        "Roll maximum counter-clockwise",
+        "Pitch bottom clockwise",
+        "Pitch bottom counter-clockwise"
+    };
+
+    for (const auto& step : calibrationSteps) {
+        RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "%s", step.c_str());
+        RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "Press and hold the joystick input, then press Enter...");
+
+        // Wait for user to press Enter
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+        // Capture joystick input
+        bool inputCaptured = false;
+
+        // Check joystick axes
+        for (size_t i = 0; i < ctrlData->joystickAxes.size(); ++i) {
+            if (fabs(ctrlData->joystickAxes[i]) > 0.1) { // Assuming threshold to detect active input
+                joystickCalibration[step] = i;
+                joystickMaxValues[step] = ctrlData->joystickAxes[i];
+                RCLCPP_INFO(rclcpp::get_logger("JoystickState"),
+                            "Mapped '%s' to axis %zu with value %.2f",
+                            step.c_str(), i, ctrlData->joystickAxes[i]);
+                inputCaptured = true;
+                break;
+            }
+        }
+
+        if (!inputCaptured) {
+            RCLCPP_WARN(rclcpp::get_logger("JoystickState"),
+                        "No input detected for '%s'. Try again.", step.c_str());
+        }
+    }
+
+    RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "Joystick calibration completed.");
+}
+
 
 void JoystickState::MapJoystickToVelocity(const std::vector<float>& axes, geometry_msgs::msg::Twist* velocity_desired) {
     if (axes.size() < 6) return; // Ensure there are enough axes
