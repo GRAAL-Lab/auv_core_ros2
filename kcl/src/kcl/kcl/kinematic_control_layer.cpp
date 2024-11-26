@@ -66,7 +66,7 @@ KCL::KCL(const std::string& configName)
 
 void KCL::JoyStickCallback(const sensor_msgs::msg::Joy::SharedPtr msg) {
     // Update joystick data in control data
-    ctrlData_->joystickAxes = msg->axes;
+    ctrlData_->joystickMsg = msg;
 }
 
 void KCL::PoseActualCallback(const auv_core_helper::msg::PoseStamped::SharedPtr msg) {
@@ -148,7 +148,6 @@ void KCL::HandleControlCommand(
 
     // Transition to the requested state
     RCLCPP_INFO(this->get_logger(), "Transitioning to state: %s", request->state.c_str());
-    std::cout << "pathPlanningMode: " << ctrlData_->pathPlanningMode << std::endl;
     fsm_.SetNextState(request->state);
     fsm_.SwitchState();
 

@@ -1,45 +1,47 @@
 #pragma once
 
 #include "states/base_auv_state.hpp"
+#include <vector>
+#include <string>
+#include <memory>
 
 /// The `JoystickState` class represents a state where the AUV is controlled via joystick input.
-/// In this state, the desired velocities are directly set from joystick commands.
 class JoystickState : public BaseAUVState {
 private:
-    // Map to store joystick calibration mappings (axis or button to action)
-    std::map<std::string, int>  joystickCalibration;
 
-    // Map to store maximum values for each action
-    std::map<std::string, double> joystickMaxValues;
 
-    // Example structure for joystick buttons (if needed for future use)
-    std::vector<int> joystickButtons;
+    float joystickData[12][2][2] = {0}; // Initialized to 0 for safety
+    std::shared_ptr<sensor_msgs::msg::Joy> joystickIdle;
+    bool calibrationDone = false;
+    bool forwardCalibrated = false;
+    bool backwardCalibrated = false;
+    bool rightCalibrated = false;
+    bool leftCalibrated = false;
+    bool upCalibrated = false;
+    bool downCalibrated = false;
+
+    bool yawRightCalibrated = false;
+    bool yawLefteCalibrated = false;
+    bool rollRightCalibrated = false;
+    bool rollLeftCalibrated = false;
+    bool pitchUpCalibrated = false;
+    bool pitchDownCalibrated = false;
+    bool idleCalibrated = false;
+
+    int confirmationButton = 0;
+    bool xFound = false;
+
+
+
+
 public:
-    /// Constructor for the `JoystickState` class.
-    /// @param fsm Pointer to the FSM controlling this state.
     explicit JoystickState(fsm::FSM* fsm);
 
-    /// Called when the AUV enters the joystick control state.
-    /// Initializes the state and resets any necessary data.
     fsm::retval OnEntry() noexcept override;
-
-    /// Called repeatedly while the AUV is in the joystick control state.
-    /// Processes joystick input to update desired velocities.
     fsm::retval Execute() noexcept override;
-
-    /// Called when the AUV exits the joystick control state.
-    /// Can be used to reset joystick-related state or perform cleanup.
     fsm::retval OnExit() noexcept override;
 
-
-    /// Calibrates the joystick by mapping axes to desired velocity components.
+private:
     void CalibrateJoystick();
-
-
-    /// Maps joystick axes to desired velocity components.
-    /// @param axes Vector of joystick axes values.
-    /// @param velocity_desired Pointer to the desired velocity message to update.
-    void MapJoystickToVelocity(const std::vector<float>& axes, geometry_msgs::msg::Twist* velocity_desired);
-
+    // void MapJoystickToVelocity();
 };
-

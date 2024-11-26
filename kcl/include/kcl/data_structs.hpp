@@ -29,7 +29,7 @@ struct ControlData {
     geometry_msgs::msg::Twist joystickVelocityDesired; ///< Joystick-derived velocity commands.
     Eigen::VectorXd poseGoal = Eigen::VectorXd(6); ///< Desired pose goal.
     double tpGoalTime = 0.0; ///< Time to reach the trajectory planning goal.
-    std::vector<float> joystickAxes;
+    std::shared_ptr<sensor_msgs::msg::Joy> joystickMsg;
 
 
     // ------------------------------

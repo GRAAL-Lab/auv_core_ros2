@@ -1,154 +1,541 @@
 #include "states/joystick_state.hpp"
+#include <cmath>
+#include <iostream>
 
 // Constructor
 JoystickState::JoystickState(fsm::FSM* fsm)
     : BaseAUVState(fsm, "JOYSTICK") {}
 
-// onEntry: Initialize joystick state
+// OnEntry: Initialize joystick state
 fsm::retval JoystickState::OnEntry() noexcept {
-    // Ensure control data is valid
-    if (!ctrlData) {
-        RCLCPP_ERROR(rclcpp::get_logger("JoystickState"), "Control data is null!");
+    if (!ctrlData->joystickMsg) {
+        RCLCPP_ERROR(rclcpp::get_logger("JoystickState"), "Joystick not connected or node not running.");
         return fsm::fail;
     }
-
     RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "Entering JOYSTICK state");
-
-    // Reset pose goal to zero
     ctrlData->poseGoal.setZero();
-
-    
-    CalibrateJoystick();
-
-
     return fsm::ok;
 }
 
-// execute: Process joystick input
+// Execute: Process joystick input
 fsm::retval JoystickState::Execute() noexcept {
-    // Ensure control data is valid
-    if (!ctrlData) {
-        RCLCPP_ERROR(rclcpp::get_logger("JoystickState"), "Control data is null!");
-        return fsm::fail;
+    if (!calibrationDone) {
+        for (int action = 0; action < 12; ++action) {
+            std::cout << "Action " << action 
+                      << " | Idle Value: " << joystickData[action][0][0]
+                      << " | Calibrated Value: " << joystickData[action][1][0]
+                      << " | Axis: " << joystickData[action][1][1] 
+                      << std::endl;
+        }
+        //print joystick axes
+        for (std::size_t i = 0; i < ctrlData->joystickMsg->axes.size(); ++i) {
+            std::cout << "Axis " << i << ": " << ctrlData->joystickMsg->axes[i] << std::endl;
+        }
+        CalibrateJoystick();
+    } else {
+        std::cout << "Calibration Results:" << std::endl;
+
+        // Print the calibrated values and their corresponding axis along with idle values
+        for (int action = 0; action < 12; ++action) {
+            std::cout << "Action " << action 
+                      << " | Idle Value: " << joystickData[action][0][0]
+                      << " | Calibrated Value: " << joystickData[action][1][0]
+                      << " | Axis: " << joystickData[action][1][1] 
+                      << std::endl;
+        }
+
+        // Indicate calibration completion
+        std::cout << "Calibration done!" << std::endl;
     }
-
-    MapJoystickToVelocity(ctrlData->joystickAxes,  &ctrlData->joystickVelocityDesired);
-
-    // Update desired velocities from joystick inputs
-    ctrlData->velocityDesired(0) = ctrlData->joystickVelocityDesired.linear.x;
-    ctrlData->velocityDesired(1) = ctrlData->joystickVelocityDesired.linear.y;
-    ctrlData->velocityDesired(2) = ctrlData->joystickVelocityDesired.linear.z;
-    ctrlData->velocityDesired(3) = ctrlData->joystickVelocityDesired.angular.x;
-    ctrlData->velocityDesired(4) = ctrlData->joystickVelocityDesired.angular.y;
-    ctrlData->velocityDesired(5) = ctrlData->joystickVelocityDesired.angular.z;
-
-    // Log the desired velocities for debugging (optional)
-    // RCLCPP_INFO(rclcpp::get_logger("JoystickState"),
-    //             "Joystick velocities: [%.2f, %.2f, %.2f, %.2f, %.2f, %.2f]",
-    //             ctrlData->velocityDesired(0), ctrlData->velocityDesired(1),
-    //             ctrlData->velocityDesired(2), ctrlData->velocityDesired(3),
-    //             ctrlData->velocityDesired(4), ctrlData->velocityDesired(5));
-
     return fsm::ok;
 }
 
-// onExit: Cleanup joystick state
+
+// OnExit: Cleanup
 fsm::retval JoystickState::OnExit() noexcept {
     RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "Exiting JOYSTICK state");
-
-    // No specific cleanup is needed in this implementation
     return fsm::ok;
 }
 
-
-// Calibrate joystick inputs
 void JoystickState::CalibrateJoystick() {
-    RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "Starting joystick calibration...");
+    static bool buttonPressed = false; // Tracks if the confirmation button is currently pressed
 
-    // List of calibration steps
-    std::vector<std::string> calibrationSteps = {
-        "Move forward axis to maximum forward",
-        "Move forward axis to maximum backward",
-        "Yaw maximum clockwise",
-        "Yaw maximum counter-clockwise",
-        "Up maximum forward",
-        "Down maximum backward",
-        "Right maximum",
-        "Left maximum",
-        "Roll maximum clockwise",
-        "Roll maximum counter-clockwise",
-        "Pitch bottom clockwise",
-        "Pitch bottom counter-clockwise"
-    };
+    if (!ctrlData || !ctrlData->joystickMsg) {
+        RCLCPP_ERROR(rclcpp::get_logger("JoystickState"), "Joystick message is null. Cannot calibrate.");
+        return;
+    }
 
-    for (const auto& step : calibrationSteps) {
-        RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "%s", step.c_str());
-        RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "Press and hold the joystick input, then press Enter...");
-
-        // Wait for user to press Enter
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-
-        // Capture joystick input
-        bool inputCaptured = false;
-
-        // Check joystick axes
-        for (size_t i = 0; i < ctrlData->joystickAxes.size(); ++i) {
-            if (fabs(ctrlData->joystickAxes[i]) > 0.1) { // Assuming threshold to detect active input
-                joystickCalibration[step] = i;
-                joystickMaxValues[step] = ctrlData->joystickAxes[i];
-                RCLCPP_INFO(rclcpp::get_logger("JoystickState"),
-                            "Mapped '%s' to axis %zu with value %.2f",
-                            step.c_str(), i, ctrlData->joystickAxes[i]);
-                inputCaptured = true;
-                break;
+    if (!xFound) {
+        RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "PLEASE PRESS THE X BUTTON");
+        for (std::size_t i = 0; i < ctrlData->joystickMsg->buttons.size(); ++i) {
+            if (ctrlData->joystickMsg->buttons[i] == 1) {
+                joystickIdle = ctrlData->joystickMsg;
+                confirmationButton = i;
+                xFound = true;
+                RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "X BUTTON DETECTED AT INDEX %u.", confirmationButton);
+                return;
             }
         }
+    }
+    else{
 
-        if (!inputCaptured) {
-            RCLCPP_WARN(rclcpp::get_logger("JoystickState"),
-                        "No input detected for '%s'. Try again.", step.c_str());
+        // Check the button press state to handle debounce
+        if (ctrlData->joystickMsg->buttons[confirmationButton] == 1) {
+            if (!buttonPressed) {
+                buttonPressed = true; // Button press detected
+                // Optionally, you can add actions here that should occur once per press
+            }
+        } else {
+            buttonPressed = false; // Reset button state upon release
         }
-    }
 
-    RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "Joystick calibration completed.");
-}
+        if (!forwardCalibrated) {
+            RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "PLEASE PUT JOYSTICK IN FORWARD AND PRESS 'X'.");
+            for (std::size_t i = 0; i < ctrlData->joystickMsg->axes.size(); ++i) {
+                if(joystickIdle->axes[i]>=0){
+                    if (abs(ctrlData->joystickMsg->axes[i]) > 0.4 && buttonPressed) {
+                        joystickData[0][1][0] = ctrlData->joystickMsg->axes[i];  // Calibrated value
+                        joystickData[0][1][1] = static_cast<float>(i);           // Axis index
+                        forwardCalibrated = true;
+                        buttonPressed = false; // Reset button state
+                        RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "FORWARD CALIBRATION COMPLETE: Axis %zu, Value %.2f", i, joystickData[0][1][0]);
+                        return;
+                    }
+                }
+                else if (joystickIdle->axes[i]<=-1){
+                if ((abs(ctrlData->joystickMsg->axes[i] - joystickIdle->axes[i])/2 ) > 0.4 && buttonPressed) {
+                        joystickData[0][1][0] = ctrlData->joystickMsg->axes[i];  // Calibrated value
+                        joystickData[0][1][1] = static_cast<float>(i);           // Axis index
+                        forwardCalibrated = true;
+                        buttonPressed = false; // Reset button state
+                        RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "FORWARD CALIBRATION COMPLETE: Axis %zu, Value %.2f", i, joystickData[0][1][0]);
+                        return;
+                    }
+                }
+            }
+        }
+        else if (!backwardCalibrated && forwardCalibrated) {
+            RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "PLEASE PUT JOYSTICK IN BACKWARD AND PRESS 'X'.");
+            for (std::size_t i = 0; i < ctrlData->joystickMsg->axes.size(); ++i) {
+                if (joystickIdle->axes[i] <= 0){
+                    if (abs(ctrlData->joystickMsg->axes[i]) > 0.4 && buttonPressed && static_cast<int>(i) != static_cast<int>(joystickData[0][1][1])) {
+                        joystickData[1][1][0] = ctrlData->joystickMsg->axes[i];  // Calibrated value
+                        joystickData[1][1][1] = static_cast<float>(i);           // Axis index
+                        backwardCalibrated = true;
+                        buttonPressed = false; // Reset button state
+                        RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "BACKWARD CALIBRATION COMPLETE: Axis %zu, Value %.2f", i, joystickData[1][1][0]);
+                        return;
+                    }
+                }
+                else if (joystickIdle->axes[i]>=1){
+                    if ((abs(ctrlData->joystickMsg->axes[i] - joystickIdle->axes[i])/2 ) > 0.4 && buttonPressed && static_cast<int>(i) != static_cast<int>(joystickData[0][1][1])) {
+                        joystickData[1][1][0] = ctrlData->joystickMsg->axes[i];  // Calibrated value
+                        joystickData[1][1][1] = static_cast<float>(i);           // Axis index
+                        backwardCalibrated = true;
+                        buttonPressed = false; // Reset button state
+                        RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "BACKWARD CALIBRATION COMPLETE: Axis %zu, Value %.2f", i, joystickData[1][1][0]);
+                        return;
+                    }
+                }
+            }
+        }  
+        else if (!yawRightCalibrated && backwardCalibrated) {
+            RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "PLEASE PUT JOYSTICK IN YAW CLOCKWISE AND PRESS 'X'.");
+            for (std::size_t i = 0; i < ctrlData->joystickMsg->axes.size(); ++i) {
+                if (joystickIdle->axes[i] <=0){
+                    if (abs(ctrlData->joystickMsg->axes[i]) > 0.4 && buttonPressed &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[0][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[1][1][1])) {
+                        joystickData[2][1][0] = ctrlData->joystickMsg->axes[i];  // Calibrated value
+                        joystickData[2][1][1] = static_cast<float>(i);           // Axis index
+                        yawRightCalibrated = true;
+                        buttonPressed = false; // Reset button state
+                        RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "YAW CLOCKWISE CALIBRATION COMPLETE: Axis %zu, Value %.2f", i, joystickData[2][1][0]);
+                        return;
+                    }
+                }
+                else if (joystickIdle->axes[i]>=0){
+                    if ((abs(ctrlData->joystickMsg->axes[i] - joystickIdle->axes[i])/2 ) > 0.4 && buttonPressed &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[0][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[1][1][1])) {
+                        joystickData[2][1][0] = ctrlData->joystickMsg->axes[i];  // Calibrated value
+                        joystickData[2][1][1] = static_cast<float>(i);           // Axis index
+                        yawRightCalibrated = true;
+                        buttonPressed = false; // Reset button state
+                        RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "YAW CLOCKWISE CALIBRATION COMPLETE: Axis %zu, Value %.2f", i, joystickData[2][1][0]);
+                        return;
+                    }
+                }
+            }
+        }  
+        else if (!yawLefteCalibrated && yawRightCalibrated) {
+            RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "PLEASE PUT JOYSTICK IN YAW COUNTERCLOCKWISE AND PRESS 'X'.");
+            for (std::size_t i = 0; i < ctrlData->joystickMsg->axes.size(); ++i) {
+                if (joystickIdle->axes[i]<=0){
+                    if (abs(ctrlData->joystickMsg->axes[i]) > 0.4 && buttonPressed &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[0][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[1][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[2][1][1])) {
+                        joystickData[3][1][0] = ctrlData->joystickMsg->axes[i];  // Calibrated value
+                        joystickData[3][1][1] = static_cast<float>(i);           // Axis index
+                        yawLefteCalibrated = true;
+                        buttonPressed = false; // Reset button state
+                        RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "YAW COUNTERCLOCKWISE CALIBRATION COMPLETE: Axis %zu, Value %.2f", i, joystickData[3][1][0]);
+                        return;
+                    }
+                }
+                else if (joystickIdle->axes[i]>=0){
+                    if ((abs(ctrlData->joystickMsg->axes[i] - joystickIdle->axes[i])/2 ) > 0.4 && buttonPressed &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[0][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[1][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[2][1][1])) {
+                        joystickData[3][1][0] = ctrlData->joystickMsg->axes[i];  // Calibrated value
+                        joystickData[3][1][1] = static_cast<float>(i);           // Axis index
+                        yawLefteCalibrated = true;
+                        buttonPressed = false; // Reset button state
+                        RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "YAW COUNTERCLOCKWISE CALIBRATION COMPLETE: Axis %zu, Value %.2f", i, joystickData[3][1][0]);
+                        return;
+                    }
+                }
+            }
+        }
+        else if (!upCalibrated && yawLefteCalibrated){
+            RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "PLEASE PUT JOYSTICK IN UP AND PRESS 'X'.");
+            for (std::size_t i = 0; i < ctrlData->joystickMsg->axes.size(); ++i) {
 
+                if (joystickIdle->axes[i]<=0){
+                    if (abs(ctrlData->joystickMsg->axes[i]) > 0.4 && buttonPressed &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[0][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[1][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[2][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[3][1][1])) {
+                        joystickData[4][1][0] = ctrlData->joystickMsg->axes[i];  // Calibrated value
+                        joystickData[4][1][1] = static_cast<float>(i);           // Axis index
+                        upCalibrated = true;
+                        buttonPressed = false; // Reset button state
+                        RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "UP CALIBRATION COMPLETE: Axis %zu, Value %.2f", i, joystickData[4][1][0]);
+                        return;
+                    }
+                }
+                else if (joystickIdle->axes[i]>=0){
+                    if ((abs(ctrlData->joystickMsg->axes[i] - joystickIdle->axes[i])/2 ) > 0.4 && buttonPressed &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[0][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[1][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[2][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[3][1][1])) {
+                        joystickData[4][1][0] = ctrlData->joystickMsg->axes[i];  // Calibrated value
+                        joystickData[4][1][1] = static_cast<float>(i);           // Axis index
+                        upCalibrated = true;
+                        buttonPressed = false; // Reset button state
+                        RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "UP CALIBRATION COMPLETE: Axis %zu, Value %.2f", i, joystickData[4][1][0]);
+                        return;
+                    }
+                }
+            }
+        }
+        else if (!downCalibrated && upCalibrated){
+            RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "PLEASE PUT JOYSTICK IN DOWN AND PRESS 'X'.");
+            for (std::size_t i = 0; i < ctrlData->joystickMsg->axes.size(); ++i) {
+                if (abs(ctrlData->joystickMsg->axes[i]) > 0.4 && buttonPressed &&
+                    static_cast<int>(i) != static_cast<int>(joystickData[0][1][1]) &&
+                    static_cast<int>(i) != static_cast<int>(joystickData[1][1][1]) &&
+                    static_cast<int>(i) != static_cast<int>(joystickData[2][1][1]) &&
+                    static_cast<int>(i) != static_cast<int>(joystickData[3][1][1]) &&
+                    static_cast<int>(i) != static_cast<int>(joystickData[4][1][1])) {
+                    joystickData[5][1][0] = ctrlData->joystickMsg->axes[i];  // Calibrated value
+                    joystickData[5][1][1] = static_cast<float>(i);           // Axis index
+                    downCalibrated = true;
+                    buttonPressed = false; // Reset button state
+                    RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "DOWN CALIBRATION COMPLETE: Axis %zu, Value %.2f", i, joystickData[5][1][0]);
+                    return;
+                }
+                else if (joystickIdle->axes[i]<=-1){
+                    if ((abs(ctrlData->joystickMsg->axes[i] - joystickIdle->axes[i])/2 ) > 0.4 && buttonPressed &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[0][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[1][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[2][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[3][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[4][1][1])) {
+                        joystickData[5][1][0] = ctrlData->joystickMsg->axes[i];  // Calibrated value
+                        joystickData[5][1][1] = static_cast<float>(i);           // Axis index
+                        downCalibrated = true;
+                        buttonPressed = false; // Reset button state
+                        RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "DOWN CALIBRATION COMPLETE: Axis %zu, Value %.2f", i, joystickData[5][1][0]);
+                        return;
+                    }
+                }
+            }
+        }
+        else if (!rightCalibrated && downCalibrated){
+            RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "PLEASE PUT JOYSTICK IN RIGHT AND PRESS 'X'.");
+            for (std::size_t i = 0; i < ctrlData->joystickMsg->axes.size(); ++i) {
+                if (joystickIdle ->axes[i]<=0){
+                    if (abs(ctrlData->joystickMsg->axes[i]) > 0.4 && buttonPressed &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[0][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[1][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[2][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[3][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[4][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[5][1][1])) {
+                        joystickData[6][1][0] = ctrlData->joystickMsg->axes[i];  // Calibrated value
+                        joystickData[6][1][1] = static_cast<float>(i);           // Axis index
+                        rightCalibrated = true;
+                        buttonPressed = false; // Reset button state
+                        RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "RIGHT CALIBRATION COMPLETE: Axis %zu, Value %.2f", i, joystickData[6][1][0]);
+                        return;
+                    }
+                }
+                else if (joystickIdle->axes[i]>=0){
+                    if ((abs(ctrlData->joystickMsg->axes[i] - joystickIdle->axes[i])/2 ) > 0.4 && buttonPressed &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[0][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[1][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[2][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[3][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[4][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[5][1][1])) {
+                        joystickData[6][1][0] = ctrlData->joystickMsg->axes[i];  // Calibrated value
+                        joystickData[6][1][1] = static_cast<float>(i);           // Axis index
+                        rightCalibrated = true;
+                        buttonPressed = false; // Reset button state
+                        RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "RIGHT CALIBRATION COMPLETE: Axis %zu, Value %.2f", i, joystickData[6][1][0]);
+                        return;
+                    }
+                }
+            }
+        }
+        else if (!leftCalibrated && rightCalibrated){
+            RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "PLEASE PUT JOYSTICK IN LEFT AND PRESS 'X'.");
+            for (std::size_t i = 0; i < ctrlData->joystickMsg->axes.size(); ++i) {
+                if (joystickIdle->axes[i]<=0){
+                    if (abs(ctrlData->joystickMsg->axes[i]) > 0.4 && buttonPressed &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[0][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[1][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[2][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[3][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[4][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[5][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[6][1][1])) {
+                        joystickData[7][1][0] = ctrlData->joystickMsg->axes[i];  // Calibrated value
+                        joystickData[7][1][1] = static_cast<float>(i);           // Axis index
+                        leftCalibrated = true;
+                        buttonPressed = false; // Reset button state
+                        RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "LEFT CALIBRATION COMPLETE: Axis %zu, Value %.2f", i, joystickData[7][1][0]);
+                        return;
+                    }
+                }
+                else if (joystickIdle->axes[i]>=0){
+                    if ((abs(ctrlData->joystickMsg->axes[i] - joystickIdle->axes[i])/2 ) > 0.4 && buttonPressed &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[0][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[1][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[2][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[3][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[4][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[5][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[6][1][1])) {
+                        joystickData[7][1][0] = ctrlData->joystickMsg->axes[i];  // Calibrated value
+                        joystickData[7][1][1] = static_cast<float>(i);           // Axis index
+                        leftCalibrated = true;
+                        buttonPressed = false; // Reset button state
+                        RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "LEFT CALIBRATION COMPLETE: Axis %zu, Value %.2f", i, joystickData[7][1][0]);
+                        return;
+                    }
+                }
+            }
+        }
+        else if (!rollRightCalibrated && leftCalibrated) {
+            RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "PLEASE PUT JOYSTICK IN ROLL RIGHT AND PRESS 'X'.");
+            for (std::size_t i = 0; i < ctrlData->joystickMsg->axes.size(); ++i) {
+                if (joystickIdle->axes[i] <= 0) {
+                    if (abs(ctrlData->joystickMsg->axes[i]) > 0.4 && buttonPressed &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[0][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[1][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[2][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[3][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[4][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[5][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[6][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[7][1][1])) {
+                        joystickData[8][1][0] = ctrlData->joystickMsg->axes[i];  // Calibrated value
+                        joystickData[8][1][1] = static_cast<float>(i);           // Axis index
+                        rollRightCalibrated = true;
+                        buttonPressed = false; // Reset button state
+                        RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "ROLL RIGHT CALIBRATION COMPLETE: Axis %zu, Value %.2f", i, joystickData[8][1][0]);
+                        return;
+                    }
+                } else if (joystickIdle->axes[i] >= 0) {
+                    if ((abs(ctrlData->joystickMsg->axes[i] - joystickIdle->axes[i]) / 2) > 0.4 && buttonPressed &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[0][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[1][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[2][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[3][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[4][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[5][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[6][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[7][1][1])) {
+                        joystickData[8][1][0] = ctrlData->joystickMsg->axes[i];  // Calibrated value
+                        joystickData[8][1][1] = static_cast<float>(i);           // Axis index
+                        rollRightCalibrated = true;
+                        buttonPressed = false; // Reset button state
+                        RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "ROLL RIGHT CALIBRATION COMPLETE: Axis %zu, Value %.2f", i, joystickData[8][1][0]);
+                        return;
+                    }
+                }
+            }
+        }
+        else if (!rollLeftCalibrated && rollRightCalibrated) {
+            RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "PLEASE PUT JOYSTICK IN ROLL LEFT AND PRESS 'X'.");
+            for (std::size_t i = 0; i < ctrlData->joystickMsg->axes.size(); ++i) {
+                if (joystickIdle->axes[i] <= 0) {
+                    if (abs(ctrlData->joystickMsg->axes[i]) > 0.4 && buttonPressed &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[0][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[1][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[2][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[3][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[4][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[5][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[6][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[7][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[8][1][1])) {
+                        joystickData[9][1][0] = ctrlData->joystickMsg->axes[i];  // Calibrated value
+                        joystickData[9][1][1] = static_cast<float>(i);           // Axis index
+                        rollLeftCalibrated = true;
+                        buttonPressed = false; // Reset button state
+                        RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "ROLL LEFT CALIBRATION COMPLETE: Axis %zu, Value %.2f", i, joystickData[9][1][0]);
+                        return;
+                    }
+                } else if (joystickIdle->axes[i] >= 0) {
+                    if ((abs(ctrlData->joystickMsg->axes[i] - joystickIdle->axes[i]) / 2) > 0.4 && buttonPressed &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[0][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[1][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[2][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[3][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[4][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[5][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[6][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[7][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[8][1][1])) {
+                        joystickData[9][1][0] = ctrlData->joystickMsg->axes[i];  // Calibrated value
+                        joystickData[9][1][1] = static_cast<float>(i);           // Axis index
+                        rollLeftCalibrated = true;
+                        buttonPressed = false; // Reset button state
+                        RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "ROLL LEFT CALIBRATION COMPLETE: Axis %zu, Value %.2f", i, joystickData[9][1][0]);
+                        return;
+                    }
+                }
+            }
+        }
+        else if (!pitchUpCalibrated && rollLeftCalibrated){
+            RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "PLEASE PUT JOYSTICK IN PITCH UP AND PRESS 'X'.");
+            for (std::size_t i = 0; i < ctrlData->joystickMsg->axes.size(); ++i) {
+                if(joystickIdle->axes[i]<=0){
+                    if (abs(ctrlData->joystickMsg->axes[i]) > 0.4 && buttonPressed &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[0][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[1][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[2][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[3][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[4][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[5][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[6][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[7][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[8][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[9][1][1])) {
+                        joystickData[10][1][0] = ctrlData->joystickMsg->axes[i];  // Calibrated value
+                        joystickData[10][1][1] = static_cast<float>(i);           // Axis index
+                        pitchUpCalibrated = true;
+                        buttonPressed = false; // Reset button state
+                        RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "PITCH UP CALIBRATION COMPLETE: Axis %zu, Value %.2f", i, joystickData[10][1][0]);
+                        return;
+                    }
+                }
+                else if (joystickIdle->axes[i]>=0){
+                    if ((abs(ctrlData->joystickMsg->axes[i] - joystickIdle->axes[i])/2 ) > 0.4 && buttonPressed &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[0][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[1][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[2][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[3][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[4][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[5][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[6][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[7][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[8][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[9][1][1])) {
+                        joystickData[10][1][0] = ctrlData->joystickMsg->axes[i];  // Calibrated value
+                        joystickData[10][1][1] = static_cast<float>(i);           // Axis index
+                        pitchUpCalibrated = true;
+                        buttonPressed = false; // Reset button state
+                        RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "PITCH UP CALIBRATION COMPLETE: Axis %zu, Value %.2f", i, joystickData[10][1][0]);
+                        return;
+                        }
+                }
+            }
+        }
+        else if (!pitchDownCalibrated && pitchUpCalibrated){
+            RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "PLEASE PUT JOYSTICK IN PITCH DOWN AND PRESS 'X'.");
+            for (std::size_t i = 0; i < ctrlData->joystickMsg->axes.size(); ++i) {
+                if(joystickIdle->axes[i]<=0){
+                    if (abs(ctrlData->joystickMsg->axes[i]) > 0.4 && buttonPressed &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[0][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[1][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[2][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[3][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[4][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[5][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[6][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[7][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[8][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[9][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[10][1][1])) {
+                        joystickData[11][1][0] = ctrlData->joystickMsg->axes[i];  // Calibrated value
+                        joystickData[11][1][1] = static_cast<float>(i);           // Axis index
+                        pitchDownCalibrated = true;
+                        buttonPressed = false; // Reset button state
+                        RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "PITCH DOWN CALIBRATION COMPLETE: Axis %zu, Value %.2f", i, joystickData[10][1][0]);
+                        return;
+                    }
+                }
+                else if (joystickIdle->axes[i]>=0){
+                    if ((abs(ctrlData->joystickMsg->axes[i] - joystickIdle->axes[i])/2 ) > 0.4 && buttonPressed &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[0][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[1][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[2][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[3][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[4][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[5][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[6][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[7][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[8][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[9][1][1]) &&
+                        static_cast<int>(i) != static_cast<int>(joystickData[10][1][1])) {
+                        joystickData[11][1][0] = ctrlData->joystickMsg->axes[i];  // Calibrated value
+                        joystickData[11][1][1] = static_cast<float>(i);           // Axis index
+                        pitchDownCalibrated = true;
+                        buttonPressed = false; // Reset button state
+                        RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "PITCH DOWN CALIBRATION COMPLETE: Axis %zu, Value %.2f", i, joystickData[10][1][0]);
+                        return;
+                    }
+                }
+            }
+        }
+        else if (!idleCalibrated && pitchDownCalibrated) {
+            RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "PLEASE PUT JOYSTICK IN IDLE AND PRESS 'X'.");
+            for (std::size_t i = 0; i < 12; ++i) {
+                if (joystickData[i][1][1] >= 0) { // Check if the axis/button index was calibrated
+                    std::size_t index = static_cast<std::size_t>(joystickData[i][1][1]);
 
-void JoystickState::MapJoystickToVelocity(const std::vector<float>& axes, geometry_msgs::msg::Twist* velocity_desired) {
-    if (axes.size() < 6) return; // Ensure there are enough axes
+                    if (i < 11) { // For axes (first 11 calibration states)
+                        joystickData[i][2][0] = ctrlData->joystickMsg->axes[index]; // Record idle axis value
+                        joystickData[i][2][1] = index;                              // Store the axis index
+                    } else { // For buttons (last 2 calibration states: pitch up/down)
+                        joystickData[i][2][0] = static_cast<float>(ctrlData->joystickMsg->buttons[index]); // Record idle button state
+                        joystickData[i][2][1] = index;                                                    // Store the button index
+                    }
+                }
+            }
 
-    // Linear velocities based on joystick input
-    double raw_linear_x = 1.0 * axes[0]; // Left/right
-    double raw_linear_y = 1.0 * axes[1]; // Forward/backward
-    double raw_linear_z = ((axes[3] + 1) / 2) * 1.0 - ((axes[4] + 1) / 2) * 1.0; // Up/down
-
-    // Angular velocities based on joystick input
-    double raw_angular_z = 0.5 * axes[2]; // Yaw (turn left/right)
-    double raw_angular_y = 0.5 * axes[5]; // Pitch (tilt forward/backward)
-
-    // Calculate magnitudes and scale
-    double magnitude_linear = sqrt(raw_linear_x * raw_linear_x + raw_linear_y * raw_linear_y + raw_linear_z * raw_linear_z);
-    double magnitude_angular = sqrt(raw_angular_z * raw_angular_z + raw_angular_y * raw_angular_y);
-
-    // Normalize and scale linear velocities
-    if (magnitude_linear > 0) {
-        double max_linear_speed = 1.5; // Adjust as needed
-        velocity_desired->linear.x = (raw_linear_x / magnitude_linear) * max_linear_speed;
-        velocity_desired->linear.y = (raw_linear_y / magnitude_linear) * max_linear_speed;
-        velocity_desired->linear.z = (raw_linear_z / magnitude_linear) * max_linear_speed;
-    } else {
-        velocity_desired->linear.x = 0;
-        velocity_desired->linear.y = 0;
-        velocity_desired->linear.z = 0;
-    }
-
-    // Normalize and scale angular velocities
-    if (magnitude_angular > 0) {
-        double max_angular_speed = 2.8; // Adjust as needed
-        velocity_desired->angular.z = (raw_angular_z / magnitude_angular) * max_angular_speed;
-        velocity_desired->angular.y = (raw_angular_y / magnitude_angular) * max_angular_speed;
-    } else {
-        velocity_desired->angular.z = 0;
-        velocity_desired->angular.y = 0;
+            idleCalibrated = true; // Mark idle calibration as complete
+            calibrationDone = true;
+            RCLCPP_INFO(rclcpp::get_logger("JoystickState"), "CALIBRATION COMPLETE.");
+            return;
+        }
     }
 }
