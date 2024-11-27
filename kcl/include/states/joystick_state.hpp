@@ -30,6 +30,8 @@ private:
 
     int confirmationButton = 0;
     bool xFound = false;
+    float incrementSpeed = 0.1f;
+    
 
 
 
@@ -43,5 +45,6 @@ public:
 
 private:
     void CalibrateJoystick();
-    // void MapJoystickToVelocity();
+    void MapJoystickToVelocityVelocites();
+    double MapValue(double value, double inMin, double inMax, double outMin, double outMax);
 };
