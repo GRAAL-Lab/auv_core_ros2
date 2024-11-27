@@ -17,20 +17,27 @@ fsm::retval JoystickState::OnEntry() noexcept {
 
 // Execute: Process joystick input
 fsm::retval JoystickState::Execute() noexcept {
-    if (!calibrationDone) {
-        CalibrateJoystick();
-    } else {
-        std::cout << "Calibration Results:" << std::endl;
-        // for (int action = 0; action < 12; ++action) {
-        //     std::cout << "Action " << action 
-        //               << " | Idle Value: " << joystickData[action][0][0]
-        //               << " | Calibrated Value: " << joystickData[action][1][0]
-        //               << " | Axis: " << joystickData[action][1][1] 
-        //               << std::endl;
-        // }
-        MapJoystickToVelocityVelocites();
+    if (ctrlData->joystickMsg) {
+        if (!calibrationDone) {
+            CalibrateJoystick();
+        } else {
+            // std::cout << "Calibration Results:" << std::endl;
+            // for (int action = 0; action < 12; ++action) {
+            //     std::cout << "Action " << action 
+            //               << " | Idle Value: " << joystickData[action][0][0]
+            //               << " | Calibrated Value: " << joystickData[action][1][0]
+            //               << " | Axis: " << joystickData[action][1][1] 
+            //               << std::endl;
+            // }
+            MapJoystickToVelocityVelocites();
+        }
+        return fsm::ok;
     }
-    return fsm::ok;
+    else{
+        RCLCPP_ERROR(rclcpp::get_logger("JoystickState"), "Joystick not connected or node not running.");
+        return fsm::fail;
+    }
+    
 }
 
 
@@ -498,7 +505,6 @@ void JoystickState::MapJoystickToVelocityVelocites() {
         ctrlData->minVelocity[5],
         ((ctrlData->maxVelocity[5] + ctrlData->minVelocity[5]) / 2));
 }
-
 
 double JoystickState::MapValue(double value, double inMin, double inMax, double outMin, double outMax) {
     // Ensure input range is ordered correctly
