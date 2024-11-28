@@ -15,47 +15,57 @@
 
 // Graal library
 #include "rml/EulerRPY.h"
+
+// Standard headers
+#include <chrono>
 #include <cmath>
 
-
-
-// Dynamic model
-
-using namespace std::chrono_literals;
-using namespace std::placeholders;
-
-class simulator : public rclcpp::Node {
+class Simulator : public rclcpp::Node {
 public:
-    simulator(const std::string& config_name);
+    explicit Simulator(const std::string& configName);
 
 private:
-    void forces_desired_callback(const std_msgs::msg::Float64MultiArray::SharedPtr msg);
-    void simulate();
-    void KCL_state_callback(const std_msgs::msg::String::SharedPtr msg);
-    void check_and_set_zero(Eigen::Matrix<double, 6, 1>& vec);
-    Eigen::Matrix3d rotationMatrix(double roll, double pitch, double yaw);
-    double m_;
-    Eigen::Vector3d CG_;
-    Eigen::Matrix3d I_;
-    Eigen::Matrix<double, 6, 1> M_a_diag_;
-    Eigen::Matrix<double, 6, 1> D_diag_;
-    double B_;
-    Eigen::Vector3d CB_;
-    Eigen::Vector3d G_;
-    Eigen::MatrixXd thruster_positions_;
-    Eigen::MatrixXd thruster_orientations_;
-    Eigen::Matrix<double, 6, 1> pose_actual_;
-    Eigen::Matrix<double, 6, 1> velocity_actual_;
-    Eigen::Matrix<double, 6, 1> acceleration_actual_;
-    Eigen::VectorXd forces_desired_;
-    Eigen::Matrix<double, 6, 6> M;
-    Eigen::MatrixXd ThrustersWrenchMatrix;
-    std::string KCL_current_state_; // Default state
-    rclcpp::Publisher<auv_core_helper::msg::PoseStamped>::SharedPtr pose_actual_publisher_;
-    rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr velocity_actual_publisher_;
-    rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr acceleration_actual_publisher_;
-    rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr forces_desired_subscription_;
-    rclcpp::TimerBase::SharedPtr timer_;
-    rclcpp::Time simulation_time_;  // Simulation time tracker
-    rclcpp::Subscription<std_msgs::msg::String>::SharedPtr KCL_state_subscription_;
+    // Callback functions
+    void ForcesDesiredCallback(const std_msgs::msg::Float64MultiArray::SharedPtr msg);
+    void Simulate();
+    void KclStateCallback(const std_msgs::msg::String::SharedPtr msg);
+
+    // Utility functions
+    void CheckAndSetZero(Eigen::Matrix<double, 6, 1>& vec);
+    Eigen::Matrix3d RotationMatrix(double roll, double pitch, double yaw);
+
+    // Dynamic model properties
+    double mass_;                                      // Vehicle mass
+    Eigen::Vector3d centerGravity_;                   // Center of Gravity
+    Eigen::Matrix3d inertiaTensor_;                   // Inertia tensor
+    Eigen::Matrix<double, 6, 1> addedMass_;           // Added mass
+    Eigen::Matrix<double, 6, 1> dampingCoefficients_; // Damping coefficients
+    double buoyancy_;                                 // Buoyancy
+    Eigen::Vector3d centerBuoyancy_;                  // Center of Buoyancy
+    Eigen::Vector3d gravityVector_;                   // Gravity vector
+
+    Eigen::MatrixXd thrusterPositions_;
+    Eigen::MatrixXd thrusterOrientations_;
+
+    // State vectors
+    Eigen::Matrix<double, 6, 1> poseActual_;
+    Eigen::Matrix<double, 6, 1> velocityActual_;
+    Eigen::Matrix<double, 6, 1> accelerationActual_;
+    Eigen::VectorXd forcesDesired_;
+
+    // Dynamic matrices
+    Eigen::Matrix<double, 6, 6> inertiaMatrix_;
+    Eigen::MatrixXd thrustersWrenchMatrix_;
+
+    std::string kclCurrentState_; // Default state
+
+    // ROS 2 communication
+    rclcpp::Publisher<auv_core_helper::msg::PoseStamped>::SharedPtr poseActualPublisher_;
+    rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr velocityActualPublisher_;
+    rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr accelerationActualPublisher_;
+
+    rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr forcesDesiredSubscription_;
+    rclcpp::TimerBase::SharedPtr simulationTimer_;
+    rclcpp::Time simulationTime_;  // Simulation time tracker
+    rclcpp::Subscription<std_msgs::msg::String>::SharedPtr kclStateSubscription_;
 };
