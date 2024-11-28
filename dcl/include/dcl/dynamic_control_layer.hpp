@@ -15,59 +15,64 @@
 // Dynamic model
 #include "6DOF_model.hpp"
 
-
-
-
-
-using namespace std::placeholders;
-class DCL : public rclcpp::Node {
+class DynamicControlLayer : public rclcpp::Node {
 public:
-    DCL(const std::string& config_name);
+    explicit DynamicControlLayer(const std::string& configName);
+
 private:
-    void pose_desired_callback(const auv_core_helper::msg::PoseStamped::SharedPtr msg);
-    void velocity_desired_callback(const geometry_msgs::msg::Twist::SharedPtr msg);
-    void acceleration_desired_callback(const geometry_msgs::msg::Twist::SharedPtr msg);
+    // Callback methods
+    void PoseDesiredCallback(const auv_core_helper::msg::PoseStamped::SharedPtr msg);
+    void VelocityDesiredCallback(const geometry_msgs::msg::Twist::SharedPtr msg);
+    void AccelerationDesiredCallback(const geometry_msgs::msg::Twist::SharedPtr msg);
 
-    void pose_actual_callback(const auv_core_helper::msg::PoseStamped::SharedPtr msg);
-    void velocity_actual_callback(const geometry_msgs::msg::Twist::SharedPtr msg);
+    void PoseActualCallback(const auv_core_helper::msg::PoseStamped::SharedPtr msg);
+    void VelocityActualCallback(const geometry_msgs::msg::Twist::SharedPtr msg);
 
-    void KCL_state_callback(const std_msgs::msg::String::SharedPtr msg);
-    void force_compute_callback();
+    void KclStateCallback(const std_msgs::msg::String::SharedPtr msg);
+    void ForceComputeCallback();
 
-    // Add Eigen data types to your header if needed, ensure Eigen is included properly
-    double m_; // Vehicle mass
-    Eigen::Vector3d CG_; // Center of Gravity
-    Eigen::Matrix3d I_; // Inertia tensor
-    Eigen::Matrix<double, 6, 1> M_a_diag_; // Added mass
-    Eigen::Matrix<double, 6, 1> D_diag_; // Damping coefficients
-    double B_; // Buoyancy
-    Eigen::Vector3d CB_; // Center of Buoyancy
-    Eigen::Vector3d G_; // Gravity vector
-    Eigen::MatrixXd thruster_positions_;
-    Eigen::MatrixXd thruster_orientations_;
-    Eigen::VectorXd thruster_upper_limits;
-    Eigen::VectorXd thruster_lower_limits;
-    Eigen::VectorXd thruster_allocation_weights;
-    Eigen::Matrix<double, 6, 1> pose_desired_;
-    Eigen::Matrix<double, 6, 1> velocity_desired_;
-    Eigen::Matrix<double, 6, 1> acceleration_desired_;
+    // Dynamic model properties
+    double mass_;                                 // Vehicle mass
+    Eigen::Vector3d centerGravity_;              // Center of Gravity
+    Eigen::Matrix3d inertiaTensor_;              // Inertia tensor
+    Eigen::Matrix<double, 6, 1> addedMass_;      // Added mass
+    Eigen::Matrix<double, 6, 1> dampingCoefficients_; // Damping coefficients
+    double buoyancy_;                            // Buoyancy
+    Eigen::Vector3d centerBuoyancy_;             // Center of Buoyancy
+    Eigen::Vector3d gravityVector_;              // Gravity vector
 
-    Eigen::Matrix<double, 6, 1> pose_actual_;
-    Eigen::Matrix<double, 6, 1> velocity_actual_;
-    Eigen::Matrix<double, 6, 1> acceleration_actual_;
+    // Thruster-related properties
+    Eigen::MatrixXd thrusterPositions_;
+    Eigen::MatrixXd thrusterOrientations_;
+    Eigen::VectorXd thrusterUpperLimits_;
+    Eigen::VectorXd thrusterLowerLimits_;
+    Eigen::VectorXd thrusterAllocationWeights_;
+    
+    // Desired states
+    Eigen::Matrix<double, 6, 1> poseDesired_;
+    Eigen::Matrix<double, 6, 1> velocityDesired_;
+    Eigen::Matrix<double, 6, 1> accelerationDesired_;
 
-    Eigen::Matrix<double, 6, 6> M;
-    Eigen::MatrixXd ThrustersWrenchMatrix;
-    std::string KCL_current_state_; // Default state
+    // Actual states
+    Eigen::Matrix<double, 6, 1> poseActual_;
+    Eigen::Matrix<double, 6, 1> velocityActual_;
+    Eigen::Matrix<double, 6, 1> accelerationActual_;
 
-    rclcpp::Subscription<auv_core_helper::msg::PoseStamped>::SharedPtr pose_desired_subscriber_;
-    rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr velocity_desired_subscriber_;
-    rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr acceleration_desired_subscriber_;
+    // Dynamic matrices
+    Eigen::Matrix<double, 6, 6> inertiaMatrix_;
+    Eigen::MatrixXd thrustersWrenchMatrix_;
 
-    rclcpp::Subscription<auv_core_helper::msg::PoseStamped>::SharedPtr pose_actual_subscriber_;
-    rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr velocity_actual_subscriber_;
+    std::string kclCurrentState_; // Current state
 
-    rclcpp::TimerBase::SharedPtr force_compute_timer_;
-    rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr forces_desired_publisher_;
-    rclcpp::Subscription<std_msgs::msg::String>::SharedPtr KCL_state_subscription_;
+    // ROS 2 communication
+    rclcpp::Subscription<auv_core_helper::msg::PoseStamped>::SharedPtr poseDesiredSubscriber_;
+    rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr velocityDesiredSubscriber_;
+    rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr accelerationDesiredSubscriber_;
+
+    rclcpp::Subscription<auv_core_helper::msg::PoseStamped>::SharedPtr poseActualSubscriber_;
+    rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr velocityActualSubscriber_;
+
+    rclcpp::TimerBase::SharedPtr forceComputeTimer_;
+    rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr forcesDesiredPublisher_;
+    rclcpp::Subscription<std_msgs::msg::String>::SharedPtr kclStateSubscription_;
 };

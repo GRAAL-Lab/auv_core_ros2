@@ -1,75 +1,113 @@
 #include "dcl/dynamic_control_layer.hpp"
 
-DCL::DCL(const std::string& config_name) : Node("dynamic_control_layer_node") {
-    this->declare_parameter("config_name", config_name);
-    std::string config_name_param;
-    this->get_parameter("config_name", config_name_param);
-    LoadParamsFromConf(config_name_param, &m_, &CG_, &I_, &M_a_diag_, &D_diag_, &B_, &CB_, &G_, &thruster_positions_, &thruster_orientations_, &thruster_upper_limits, &thruster_lower_limits, &thruster_allocation_weights, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
-    pose_desired_subscriber_ = this->create_subscription<auv_core_helper::msg::PoseStamped>(auv_core_helper::topicnames::pose_desired, 1, std::bind(&DCL::pose_desired_callback, this, _1));
-    velocity_desired_subscriber_ = this->create_subscription<geometry_msgs::msg::Twist>(auv_core_helper::topicnames::velocity_desired, 1, std::bind(&DCL::velocity_desired_callback, this, _1));
+DynamicControlLayer::DynamicControlLayer(const std::string& configName)
+    : Node("dynamic_control_layer_node") {
+    // Declare and retrieve configuration parameter
+    this->declare_parameter("config_name", configName);
+    std::string configNameParam;
+    this->get_parameter("config_name", configNameParam);
 
-    pose_actual_subscriber_ = this->create_subscription<auv_core_helper::msg::PoseStamped>(auv_core_helper::topicnames::pose_actual, 1, std::bind(&DCL::pose_actual_callback, this, _1));
-    velocity_actual_subscriber_ = this->create_subscription<geometry_msgs::msg::Twist>(auv_core_helper::topicnames::velocity_actual, 1, std::bind(&DCL::velocity_actual_callback, this, _1));
-    KCL_state_subscription_ = this->create_subscription<std_msgs::msg::String>(auv_core_helper::topicnames::kcl_state, 1, std::bind(&DCL::KCL_state_callback, this, _1));
-    forces_desired_publisher_ = this->create_publisher<std_msgs::msg::Float64MultiArray>(auv_core_helper::topicnames::forces_desired, 1);
-    M = GetM(m_, CG_, I_, M_a_diag_);
-    ThrustersWrenchMatrix = GetThrustersWrenchMatrix(thruster_positions_, thruster_orientations_);
+    // Load parameters from configuration
+    LoadParamsFromConf(
+        configNameParam, 
+        &mass_, &centerGravity_, &inertiaTensor_, &addedMass_, &dampingCoefficients_,
+        &buoyancy_, &centerBuoyancy_, &gravityVector_, &thrusterPositions_, &thrusterOrientations_,
+        &thrusterUpperLimits_, &thrusterLowerLimits_, &thrusterAllocationWeights_,
+        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
 
-    force_compute_timer_ = this->create_wall_timer(std::chrono::milliseconds(100), std::bind(&DCL::force_compute_callback, this));
+    // Subscriptions
+    poseDesiredSubscriber_ = this->create_subscription<auv_core_helper::msg::PoseStamped>(
+        auv_core_helper::topicnames::pose_desired, 1, 
+        std::bind(&DynamicControlLayer::PoseDesiredCallback, this, std::placeholders::_1));
+
+    velocityDesiredSubscriber_ = this->create_subscription<geometry_msgs::msg::Twist>(
+        auv_core_helper::topicnames::velocity_desired, 1, 
+        std::bind(&DynamicControlLayer::VelocityDesiredCallback, this, std::placeholders::_1));
+
+    poseActualSubscriber_ = this->create_subscription<auv_core_helper::msg::PoseStamped>(
+        auv_core_helper::topicnames::pose_actual, 1, 
+        std::bind(&DynamicControlLayer::PoseActualCallback, this, std::placeholders::_1));
+
+    velocityActualSubscriber_ = this->create_subscription<geometry_msgs::msg::Twist>(
+        auv_core_helper::topicnames::velocity_actual, 1, 
+        std::bind(&DynamicControlLayer::VelocityActualCallback, this, std::placeholders::_1));
+
+    kclStateSubscription_ = this->create_subscription<std_msgs::msg::String>(
+        auv_core_helper::topicnames::kcl_state, 1, 
+        std::bind(&DynamicControlLayer::KclStateCallback, this, std::placeholders::_1));
+
+    // Publisher
+    forcesDesiredPublisher_ = this->create_publisher<std_msgs::msg::Float64MultiArray>(
+        auv_core_helper::topicnames::forces_desired, 1);
+
+    // Initialize dynamic model matrices
+    inertiaMatrix_ = GetM(mass_, centerGravity_, inertiaTensor_, addedMass_);
+    thrustersWrenchMatrix_ = GetThrustersWrenchMatrix(thrusterPositions_, thrusterOrientations_);
+
+    // Timer
+    forceComputeTimer_ = this->create_wall_timer(
+        std::chrono::milliseconds(100), 
+        std::bind(&DynamicControlLayer::ForceComputeCallback, this));
 }
 
-void DCL::pose_desired_callback(const auv_core_helper::msg::PoseStamped::SharedPtr msg) {
-    pose_desired_ << msg->x, msg->y, msg->z, msg->roll, msg->pitch, msg->yaw;
+void DynamicControlLayer::PoseDesiredCallback(const auv_core_helper::msg::PoseStamped::SharedPtr msg) {
+    poseDesired_ << msg->x, msg->y, msg->z, msg->roll, msg->pitch, msg->yaw;
 }
 
-void DCL::velocity_desired_callback(const geometry_msgs::msg::Twist::SharedPtr msg) {
-    velocity_desired_ << msg->linear.x, msg->linear.y, msg->linear.z, msg->angular.x, msg->angular.y, msg->angular.z;
+void DynamicControlLayer::VelocityDesiredCallback(const geometry_msgs::msg::Twist::SharedPtr msg) {
+    velocityDesired_ << msg->linear.x, msg->linear.y, msg->linear.z, 
+                        msg->angular.x, msg->angular.y, msg->angular.z;
 }
 
-void DCL::pose_actual_callback(const auv_core_helper::msg::PoseStamped::SharedPtr msg) {
-    pose_actual_ << msg->x, msg->y, msg->z, msg->roll, msg->pitch, msg->yaw;
-    //std::cout << "Updated Actual Pose Matrix: \n" << pose_actual_.transpose() << std::endl;
+void DynamicControlLayer::PoseActualCallback(const auv_core_helper::msg::PoseStamped::SharedPtr msg) {
+    poseActual_ << msg->x, msg->y, msg->z, msg->roll, msg->pitch, msg->yaw;
 }
 
-void DCL::velocity_actual_callback(const geometry_msgs::msg::Twist::SharedPtr msg) {
-    velocity_actual_ << msg->linear.x, msg->linear.y, msg->linear.z, msg->angular.x, msg->angular.y, msg->angular.z;
-    //std::cout << "Updated Actual Velocity Matrix: \n" << velocity_actual_.transpose() << std::endl;
+void DynamicControlLayer::VelocityActualCallback(const geometry_msgs::msg::Twist::SharedPtr msg) {
+    velocityActual_ << msg->linear.x, msg->linear.y, msg->linear.z, 
+                       msg->angular.x, msg->angular.y, msg->angular.z;
 }
 
-void DCL::KCL_state_callback(const std_msgs::msg::String::SharedPtr msg) {
-    KCL_current_state_ = msg->data;
+void DynamicControlLayer::KclStateCallback(const std_msgs::msg::String::SharedPtr msg) {
+    kclCurrentState_ = msg->data;
 }
 
-void DCL::force_compute_callback() {
+void DynamicControlLayer::ForceComputeCallback() {
+    // Compute dynamic model components
+    Eigen::Matrix<double, 6, 6> coriolisMatrix = GetC(velocityDesired_, mass_, centerGravity_, inertiaTensor_);
+    Eigen::Matrix<double, 6, 6> dampingMatrix = GetD(velocityDesired_, dampingCoefficients_);
+    Eigen::Matrix<double, 6, 1> gravityVector = GetG(poseActual_, mass_, buoyancy_, gravityVector_, centerGravity_, centerBuoyancy_);
 
-    // Compute the matrices involved in the dynamic model equation
-    Eigen::Matrix<double, 6, 6> C = GetC(velocity_desired_, m_, CG_, I_);
-    Eigen::Matrix<double, 6, 6> D = GetD(velocity_desired_, D_diag_);
-    Eigen::Matrix<double, 6, 1> g = GetG(pose_actual_, m_, B_, G_, CG_, CB_);
+    // Solve for desired acceleration
+    accelerationDesired_ = (velocityDesired_ - velocityActual_) * 1;
 
-    //solve for acceleration desired
-    acceleration_desired_ = (velocity_desired_-velocity_actual_)*1;
+    // Compute left-hand side
+    Eigen::Matrix<double, 6, 1> lhs = 
+        inertiaMatrix_ * accelerationDesired_ + 
+        coriolisMatrix * velocityDesired_ + 
+        dampingMatrix * velocityDesired_ + 
+        gravityVector;
 
-    // Compute the left-hand side of the equation
-    Eigen::Matrix<double, 6, 1> lhs = M * acceleration_desired_ + C * velocity_desired_ + D * velocity_desired_ + g;
     // Update bounds matrix
-    Eigen::MatrixXd up_low_bounds(ThrustersWrenchMatrix.cols(), 2);
-    up_low_bounds.col(0) = thruster_lower_limits;
-    up_low_bounds.col(1) = thruster_upper_limits;
+    Eigen::MatrixXd upLowBounds(thrustersWrenchMatrix_.cols(), 2);
+    upLowBounds.col(0) = thrusterLowerLimits_;
+    upLowBounds.col(1) = thrusterUpperLimits_;
 
-    // Use the QP solver to get optimal forces
-    Eigen::VectorXd x = GetForces(ThrustersWrenchMatrix, lhs, up_low_bounds, thruster_allocation_weights);
-    // Publish the computed forces
-    std_msgs::msg::Float64MultiArray force_msg;
-    force_msg.data.resize(x.size());
-    std::copy_n(x.data(), x.size(), force_msg.data.begin());
+    // Solve for thruster forces
+    Eigen::VectorXd forces = GetForces(thrustersWrenchMatrix_, lhs, upLowBounds, thrusterAllocationWeights_);
 
-    if (KCL_current_state_ == "IDLE" || KCL_current_state_ == "RESET") {
-        std::fill(force_msg.data.begin(), force_msg.data.end(), 0.0);
+    // Prepare message for publishing
+    std_msgs::msg::Float64MultiArray forceMsg;
+    forceMsg.data.resize(forces.size());
+    std::copy_n(forces.data(), forces.size(), forceMsg.data.begin());
+
+    if (kclCurrentState_ == "IDLE" || kclCurrentState_ == "RESET") {
+        std::fill(forceMsg.data.begin(), forceMsg.data.end(), 0.0);
     } else {
-        for (size_t i = 0; i < static_cast<size_t>(x.size()); ++i) {
-            force_msg.data[i] = x(i);
+        for (size_t i = 0; i < static_cast<size_t>(forces.size()); ++i) {
+            forceMsg.data[i] = forces(i);
         }
     }
-    forces_desired_publisher_->publish(force_msg);
+
+    forcesDesiredPublisher_->publish(forceMsg);
 }
