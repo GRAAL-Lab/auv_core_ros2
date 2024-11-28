@@ -4,7 +4,7 @@
   <name>kcl</name>
   <version>0.1.0</version>
   <description>Kinematic control Layer for ROS2 inculding it's interface</description>
-  <maintainer email="youssef.attia@edu.unige.it">usflinux</maintainer>
+  <maintainer email="youssef.attia@edu.unige.it"></maintainer>
   <license>MIT</license>
   <author>Youssef Attia</author>
 
