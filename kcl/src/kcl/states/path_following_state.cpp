@@ -113,7 +113,9 @@ fsm::retval PathFollowingState::OnEntry() noexcept {
     pidYaw_.Initialize(gainsYaw, ctrlData->dt, (ctrlData->maxVelocity(5) > std::abs(ctrlData->minVelocity(5))) ? ctrlData->maxVelocity(5) : std::abs(ctrlData->minVelocity(5))); // Initialize the PID controller for yaw
 
     // Load ALOS parameters
-    dynamic_goal_alos::DynamicGoalBasedALOSParams alosParams = dynamic_goal_alos::LoadALOSParamsFromConf("/home/usflinux/ros2_ws/src/auv_core_ros2/auv_core_helper/param/alosed_params");
+    std::string packagePath_ = ament_index_cpp::get_package_share_directory("auv_core_helper");
+    std::string alosPath_ = packagePath_ + "/param/alosed_params";
+    dynamic_goal_alos::DynamicGoalBasedALOSParams alosParams = dynamic_goal_alos::LoadALOSParamsFromConf(alosPath_);
 
     // Initialize the ALOS controller using make_unique
     alosController_ = std::make_unique<dynamic_goal_alos::DynamicGoalBasedALOS>(alosParams);
@@ -301,6 +303,7 @@ fsm::retval PathFollowingState::Execute() noexcept {
         
         // Update delta using the ALOS controller
         delta_ = alosController_->UpdateLookAheadDistance(crossTrackError_, verticalTrackError_, tangentsDifferenceNorm);
+
 
         RCLCPP_INFO(rclcpp::get_logger("PathFollowingState"), "Delta: %f", delta_);
         RCLCPP_INFO(rclcpp::get_logger("PathFollowingState"), "Time: %f", ctrlData->timeActual.seconds());
