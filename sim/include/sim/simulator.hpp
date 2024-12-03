@@ -43,6 +43,11 @@ private:
     Eigen::Matrix<double, 6, 1> accelerationActual_;
     Eigen::VectorXd forcesDesired_;
 
+    // Parameters
+    double currentYVelocity_, currentZVelocity_; // Time step
+    Eigen::Matrix<double, 6, 1> currentVelocity_; // Current velocity in the world frame
+    double dt_;
+
     std::string kclCurrentState_; // Default state
 
     // ROS 2 communication

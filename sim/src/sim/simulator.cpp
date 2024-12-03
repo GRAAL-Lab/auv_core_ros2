@@ -9,6 +9,24 @@ Simulator::Simulator()
     std::string configNameParam;
     this->get_parameter("config_name", configNameParam);
 
+    // Declare parameters for current velocities and simulation time step
+    this->declare_parameter<double>("current_y_velocity", 0.0); // Default y-axis current velocity
+    this->declare_parameter<double>("current_z_velocity", 0.0); // Default z-axis current velocity
+    this->declare_parameter<double>("simulation_dt", 0.1);      // Default time step
+
+    
+    this->get_parameter("current_y_velocity", currentYVelocity_);
+    this->get_parameter("current_z_velocity", currentZVelocity_);
+    this->get_parameter("simulation_dt", dt_);
+
+    std::cout << "Current y velocity: " << currentYVelocity_ << std::endl;
+    std::cout << "Current z velocity: " << currentZVelocity_ << std::endl;
+    std::cout << "Simulation time step: " << dt_ << std::endl;
+
+
+    // Store parameters
+    currentVelocity_ << 0.0, currentYVelocity_, currentZVelocity_, 0.0, 0.0, 0.0;
+
     // Construct the dynamic model parameters path
     std::string packagePath = ament_index_cpp::get_package_share_directory("auv_core_helper");
     std::string dynamicModelParamsPath_ = packagePath + "/param/dynamic_model/" + configNameParam + ".conf";
@@ -29,6 +47,7 @@ Simulator::Simulator()
 
     // Initialize the dynamics model using a smart pointer
     dynamicsModel_ = std::make_unique<DynamicsModel>(config, configNameParam);
+
     // Publishers
     poseActualPublisher_ = this->create_publisher<auv_core_helper::msg::PoseStamped>(
         auv_core_helper::topicnames::pose_actual, 1);
@@ -47,7 +66,8 @@ Simulator::Simulator()
         std::bind(&Simulator::KclStateCallback, this, std::placeholders::_1));
 
     // Timer for simulation
-    simulationTimer_ = this->create_wall_timer(std::chrono::milliseconds(100), std::bind(&Simulator::Simulate, this));
+    simulationTimer_ = this->create_wall_timer(std::chrono::milliseconds(static_cast<int>(dt_ * 1000)),
+                                               std::bind(&Simulator::Simulate, this));
 
     // Initialize state vectors
     poseActual_.setZero(6);
@@ -71,18 +91,20 @@ void Simulator::ForcesDesiredCallback(const std_msgs::msg::Float64MultiArray::Sh
 }
 
 void Simulator::Simulate() {
-    double dt = 0.1; // Time step
-    simulationTime_ += rclcpp::Duration::from_seconds(0.1);
+    simulationTime_ += rclcpp::Duration::from_seconds(dt_);
+
+    // Define current velocity in the world frame using parameters
+    Eigen::Matrix<double, 6, 1> velocityActualRel_ = velocityActual_ - currentVelocity_;
 
     // Update the dynamics model with current velocity and pose
-    dynamicsModel_->UpdateActualModel(velocityActual_, poseActual_);
+    dynamicsModel_->UpdateActualModel(velocityActualRel_, poseActual_);
 
     // Compute acceleration given the desired forces
     accelerationActual_ = dynamicsModel_->ComputeAcceleration(forcesDesired_);
 
     // Update state
-    velocityActual_ += accelerationActual_ * dt;
-    poseActual_ += velocityActual_ * dt;
+    velocityActual_ += accelerationActual_ * dt_;
+    poseActual_ += velocityActual_ * dt_;
 
     // Reset conditions
     if (kclCurrentState_ == "RESET" || poseActual_.norm() > 1000.0) {
