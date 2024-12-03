@@ -294,13 +294,6 @@ fsm::retval PathFollowingState::Execute() noexcept {
         // Evaluate tangent difference norm. double showing how much the vehicle is aligned with the path direction but not if the path is changing
         double tangentsDifferenceNorm = (goalDirection - currentDirection).norm();
 
-
-        // double baseSetpoint = deltaMax_;
-        // double errorMagnitude = (10.0 * fabs(crossTrackError_)) + (10.0 * fabs(verticalTrackError_)) + (30.0 * fabs(tangentsDifferenceNorm));
-        // double IOutput = pidDelta_.Compute(baseSetpoint - errorMagnitude, delta_);
-        // delta_ += IOutput; // Scale the PID output to modulate the control response
-        // delta_ = std::clamp(delta_, deltaMin_, deltaMax_);
-        
         // Update delta using the ALOS controller
         delta_ = alosController_->UpdateLookAheadDistance(crossTrackError_, verticalTrackError_, tangentsDifferenceNorm);
 
@@ -313,9 +306,10 @@ fsm::retval PathFollowingState::Execute() noexcept {
 
         // Update the current abscissa to the abscissa of the closest point, preparing for the next update cycle
         currentAbscissa_ = closestPointAbscissa_;
-        if (currentAbscissa_ >= path->EndParameter()) {// this has an segmentation error when path has finished, check it
+        if (path_completed>=99.95) {// this has an segmentation error when path has finished, check it
             RCLCPP_INFO(rclcpp::get_logger("PathFollowingState"), "Path has ended");
             fsm_->SetNextState(States::HOLD);
+            return fsm::ok;
         }
 
     }
@@ -328,5 +322,7 @@ fsm::retval PathFollowingState::OnExit() noexcept {
     isVehicleOnPathDirection_ = false;
     closestPointAbscissa_ = 0.0;
     currentAbscissa_ = 0.0;
+    // Reset the alosController_ to destroy it
+    alosController_.reset(); // This will destroy the controller instance
     return fsm::ok;
 }

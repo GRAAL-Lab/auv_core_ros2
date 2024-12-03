@@ -10,11 +10,7 @@ DynamicControlLayer::DynamicControlLayer()
     LoadParamsFromConf(
         configNameParam, &thrusterUpperLimits_, &thrusterLowerLimits_, &thrusterAllocationWeights_,
         nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
-    // Print the values of the parameters
-    std::cout << "thrusterUpperLimits_: " << thrusterUpperLimits_ << std::endl;
-    std::cout << "thrusterLowerLimits_: " << thrusterLowerLimits_ << std::endl;
-    std::cout << "thrusterAllocationWeights_: " << thrusterAllocationWeights_ << std::endl;
-
+        
     // Construct the dynamic model parameters path
     std::string packagePath = ament_index_cpp::get_package_share_directory("auv_core_helper");
     std::string dynamicModelParamsPath_ = packagePath + "/param/dynamic_model/" + configNameParam + ".conf";

@@ -95,6 +95,7 @@ void InterfaceNode::ProcessStateAndSendRequest(const std::string& state) {
             HandleCancelRequest();
             return;
         }
+        SendServiceRequest(state, coordinates, timeToReach);
     } else if (state == States::PATH_FOLLOWING) {
         GatherPathDetails();
     }

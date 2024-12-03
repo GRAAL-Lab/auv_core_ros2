@@ -86,70 +86,72 @@ void KCL::AccelerationActualCallback(const geometry_msgs::msg::Twist::SharedPtr 
 void KCL::HandleControlCommand(
     const std::shared_ptr<auv_core_helper::srv::ControlCommand::Request> request,
     std::shared_ptr<auv_core_helper::srv::ControlCommand::Response> response) {
+        //print the request
+        RCLCPP_INFO(this->get_logger(), "Received request to transition to state: %s", request->state.c_str());
 
-    // Handle different control states
-    if (request->state == States::TRAJECTORY_FOLLOWING) {
-        ctrlData_->poseGoal << request->x, request->y, request->z, request->roll, request->pitch, request->yaw;
-        ctrlData_->tpGoalTime = request->time_to_reach;
-    } else if (request->state == States::PATH_FOLLOWING) {
-        ctrlData_->pathPlanningMode = request->path_planning_2d_3d;
+        // Handle different control states
+        if (request->state == States::TRAJECTORY_FOLLOWING) {
+            ctrlData_->poseGoal << request->x, request->y, request->z, request->roll, request->pitch, request->yaw;
+            ctrlData_->tpGoalTime = request->time_to_reach;
+        } else if (request->state == States::PATH_FOLLOWING) {
+            ctrlData_->pathPlanningMode = request->path_planning_2d_3d;
 
-        // Use a switch statement to handle path planning modes
-        switch (ctrlData_->pathPlanningMode) {
-            case auv_core_helper::Helix3D: {
-                // Handle 3D Helix Path Following
-                // RCLCPP_INFO(this->get_logger(), "Helix path following requested");
-                ctrlData_->helixStartPos = {request->helix_start_pos.x, request->helix_start_pos.y, request->helix_start_pos.z};
-                ctrlData_->helixAxisPos = {request->helix_axis_pos.x, request->helix_axis_pos.y, request->helix_axis_pos.z};
-                ctrlData_->helixAxisDir = {request->helix_axis_dir.x, request->helix_axis_dir.y, request->helix_axis_dir.z};
-                ctrlData_->helixFrequency = request->helix_frequency;
-                ctrlData_->helixNumQuadrants = request->helix_num_quadrants;
-                ctrlData_->helixCounterClockwise = request->helix_counter_clockwise;
-                break;
-            }
-            case auv_core_helper::Serpentine2D: {
-                // Handle 2D Serpentine Path Following
-                // RCLCPP_INFO(this->get_logger(), "2D Serpentine path following requested");
-                ctrlData_->serpentineAngle = request->serpentine_angle;
-                ctrlData_->serpentineDirection = request->serpentine_direction;
-                ctrlData_->serpentineOffset = request->serpentine_offset;
-                ctrlData_->serpentinePolygonVertices.clear();
-                for (const auto& vertex : request->serpentine_polygon_vertices) {
-                    ctrlData_->serpentinePolygonVertices.emplace_back(vertex.x, vertex.y, vertex.z);
+            // Use a switch statement to handle path planning modes
+            switch (ctrlData_->pathPlanningMode) {
+                case auv_core_helper::Helix3D: {
+                    // Handle 3D Helix Path Following
+                    // RCLCPP_INFO(this->get_logger(), "Helix path following requested");
+                    ctrlData_->helixStartPos = {request->helix_start_pos.x, request->helix_start_pos.y, request->helix_start_pos.z};
+                    ctrlData_->helixAxisPos = {request->helix_axis_pos.x, request->helix_axis_pos.y, request->helix_axis_pos.z};
+                    ctrlData_->helixAxisDir = {request->helix_axis_dir.x, request->helix_axis_dir.y, request->helix_axis_dir.z};
+                    ctrlData_->helixFrequency = request->helix_frequency;
+                    ctrlData_->helixNumQuadrants = request->helix_num_quadrants;
+                    ctrlData_->helixCounterClockwise = request->helix_counter_clockwise;
+                    break;
                 }
-                break;
-            }
-            case auv_core_helper::Serpentine3D: {
-                // Handle 3D Serpentine Path Following
-                // RCLCPP_INFO(this->get_logger(), "3D Serpentine path following requested");
-                ctrlData_->serpentineAngle = request->serpentine_angle;
-                ctrlData_->serpentineDirection = request->serpentine_direction;
-                ctrlData_->serpentineOffset = request->serpentine_offset;
-                ctrlData_->serpentinePolygonVertices.clear();
-                for (const auto& vertex : request->serpentine_polygon_vertices) {
-                    ctrlData_->serpentinePolygonVertices.emplace_back(vertex.x, vertex.y, vertex.z);
+                case auv_core_helper::Serpentine2D: {
+                    // Handle 2D Serpentine Path Following
+                    // RCLCPP_INFO(this->get_logger(), "2D Serpentine path following requested");
+                    ctrlData_->serpentineAngle = request->serpentine_angle;
+                    ctrlData_->serpentineDirection = request->serpentine_direction;
+                    ctrlData_->serpentineOffset = request->serpentine_offset;
+                    ctrlData_->serpentinePolygonVertices.clear();
+                    for (const auto& vertex : request->serpentine_polygon_vertices) {
+                        ctrlData_->serpentinePolygonVertices.emplace_back(vertex.x, vertex.y, vertex.z);
+                    }
+                    break;
                 }
-                ctrlData_->diveDepth = request->dive_depth;
-                ctrlData_->curvature = request->curvature;
-                ctrlData_->dipNumPoints = request->dip_num_points;
-                ctrlData_->diveLength = request->dive_length;
-                break;
-            }
-            default: {
-                RCLCPP_ERROR(this->get_logger(), "Invalid pathPlanningMode: %d", ctrlData_->pathPlanningMode);
-                response->success = false;
-                return;
+                case auv_core_helper::Serpentine3D: {
+                    // Handle 3D Serpentine Path Following
+                    // RCLCPP_INFO(this->get_logger(), "3D Serpentine path following requested");
+                    ctrlData_->serpentineAngle = request->serpentine_angle;
+                    ctrlData_->serpentineDirection = request->serpentine_direction;
+                    ctrlData_->serpentineOffset = request->serpentine_offset;
+                    ctrlData_->serpentinePolygonVertices.clear();
+                    for (const auto& vertex : request->serpentine_polygon_vertices) {
+                        ctrlData_->serpentinePolygonVertices.emplace_back(vertex.x, vertex.y, vertex.z);
+                    }
+                    ctrlData_->diveDepth = request->dive_depth;
+                    ctrlData_->curvature = request->curvature;
+                    ctrlData_->dipNumPoints = request->dip_num_points;
+                    ctrlData_->diveLength = request->dive_length;
+                    break;
+                }
+                default: {
+                    RCLCPP_ERROR(this->get_logger(), "Invalid pathPlanningMode: %d", ctrlData_->pathPlanningMode);
+                    response->success = false;
+                    return;
+                }
             }
         }
-    }
 
-    // Transition to the requested state
-    RCLCPP_INFO(this->get_logger(), "Transitioning to state: %s", request->state.c_str());
-    fsm_.SetNextState(request->state);
-    fsm_.SwitchState();
+        // Transition to the requested state
+        RCLCPP_INFO(this->get_logger(), "Transitioning to state: %s", request->state.c_str());
+        fsm_.SetNextState(request->state);
+        fsm_.SwitchState();
 
-    // Respond with success
-    response->success = true;
+        // Respond with success
+        response->success = true;
 }
 
 void KCL::SetupTransitions() {
@@ -203,7 +205,7 @@ void KCL::SetupTransitions() {
 void KCL::ExecuteFSM() {
     // Execute the current FSM state
     // std::string previous_state = fsm_.GetCurrentStateName();
-    // fsm_.SwitchState();
+    fsm_.SwitchState();
     fsm_.ExecuteState();
 
     // Publish current state
