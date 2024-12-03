@@ -26,7 +26,7 @@
 
 class Visualizer : public rclcpp::Node {
 public:
-    explicit Visualizer(const std::string& configName);
+    explicit Visualizer();
 
 private:
     // Callback functions

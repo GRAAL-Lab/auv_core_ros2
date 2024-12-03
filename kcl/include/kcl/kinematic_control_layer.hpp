@@ -35,7 +35,7 @@
 
 class KCL : public rclcpp::Node {
 public:
-    explicit KCL(const std::string& configName);
+    explicit KCL();
 
     /// Executes the FSM by running the state transitions and actions.
     void ExecuteFSM();

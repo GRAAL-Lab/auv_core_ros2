@@ -1,19 +1,40 @@
 #include "dcl/dynamic_control_layer.hpp"
-
-DynamicControlLayer::DynamicControlLayer(const std::string& configName)
+DynamicControlLayer::DynamicControlLayer()
     : Node("dynamic_control_layer_node") {
     // Declare and retrieve configuration parameter
-    this->declare_parameter("config_name", configName);
+    this->declare_parameter<std::string>("config_name", "default_value");
     std::string configNameParam;
     this->get_parameter("config_name", configNameParam);
 
     // Load parameters from configuration
     LoadParamsFromConf(
-        configNameParam, 
-        &mass_, &centerGravity_, &inertiaTensor_, &addedMass_, &dampingCoefficients_,
-        &buoyancy_, &centerBuoyancy_, &gravityVector_, &thrusterPositions_, &thrusterOrientations_,
-        &thrusterUpperLimits_, &thrusterLowerLimits_, &thrusterAllocationWeights_,
+        configNameParam, &thrusterUpperLimits_, &thrusterLowerLimits_, &thrusterAllocationWeights_,
         nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
+    // Print the values of the parameters
+    std::cout << "thrusterUpperLimits_: " << thrusterUpperLimits_ << std::endl;
+    std::cout << "thrusterLowerLimits_: " << thrusterLowerLimits_ << std::endl;
+    std::cout << "thrusterAllocationWeights_: " << thrusterAllocationWeights_ << std::endl;
+
+    // Construct the dynamic model parameters path
+    std::string packagePath = ament_index_cpp::get_package_share_directory("auv_core_helper");
+    std::string dynamicModelParamsPath_ = packagePath + "/param/dynamic_model/" + configNameParam + ".conf";
+
+    // Load configuration file
+    libconfig::Config config;
+    try {
+        config.readFile(dynamicModelParamsPath_.c_str());
+    } catch (const libconfig::FileIOException &fioex) {
+        RCLCPP_ERROR(this->get_logger(), "I/O error while reading file: %s", dynamicModelParamsPath_.c_str());
+        throw std::runtime_error("Failed to load configuration file: I/O error");
+    } catch (const libconfig::ParseException &pex) {
+        RCLCPP_ERROR(this->get_logger(), "Parse error at %s:%d - %s", pex.getFile(), pex.getLine(), pex.getError());
+        throw std::runtime_error("Failed to load configuration file: Parse error");
+    }
+
+    RCLCPP_INFO(this->get_logger(), "Configuration loaded successfully from: %s", dynamicModelParamsPath_.c_str());
+
+    // Initialize the dynamics model using a smart pointer
+    dynamicsModel_ = std::make_unique<DynamicsModel>(config, configNameParam);
 
     // Subscriptions
     poseDesiredSubscriber_ = this->create_subscription<auv_core_helper::msg::PoseStamped>(
@@ -39,10 +60,6 @@ DynamicControlLayer::DynamicControlLayer(const std::string& configName)
     // Publisher
     forcesDesiredPublisher_ = this->create_publisher<std_msgs::msg::Float64MultiArray>(
         auv_core_helper::topicnames::forces_desired, 1);
-
-    // Initialize dynamic model matrices
-    inertiaMatrix_ = GetM(mass_, centerGravity_, inertiaTensor_, addedMass_);
-    thrustersWrenchMatrix_ = GetThrustersWrenchMatrix(thrusterPositions_, thrusterOrientations_);
 
     // Timer
     forceComputeTimer_ = this->create_wall_timer(
@@ -73,20 +90,15 @@ void DynamicControlLayer::KclStateCallback(const std_msgs::msg::String::SharedPt
 }
 
 void DynamicControlLayer::ForceComputeCallback() {
-    // Compute dynamic model components
-    Eigen::Matrix<double, 6, 6> coriolisMatrix = GetC(velocityDesired_, mass_, centerGravity_, inertiaTensor_);
-    Eigen::Matrix<double, 6, 6> dampingMatrix = GetD(velocityDesired_, dampingCoefficients_);
-    Eigen::Matrix<double, 6, 1> gravityVector = GetG(poseActual_, mass_, buoyancy_, gravityVector_, centerGravity_, centerBuoyancy_);
-
     // Solve for desired acceleration
     accelerationDesired_ = (velocityDesired_ - velocityActual_) * 1;
 
-    // Compute left-hand side
-    Eigen::Matrix<double, 6, 1> lhs = 
-        inertiaMatrix_ * accelerationDesired_ + 
-        coriolisMatrix * velocityDesired_ + 
-        dampingMatrix * velocityDesired_ + 
-        gravityVector;
+    // update the actual model
+    Eigen::Matrix<double, 6, 1> lhs = dynamicsModel_->ComputeDesiredModel(accelerationDesired_ ,velocityActual_, poseActual_);
+
+
+    // Compute acceleration given the desired forces
+    thrustersWrenchMatrix_ = dynamicsModel_->GetThrustersWrenchMatrix();
 
     // Update bounds matrix
     Eigen::MatrixXd upLowBounds(thrustersWrenchMatrix_.cols(), 2);
@@ -111,3 +123,74 @@ void DynamicControlLayer::ForceComputeCallback() {
 
     forcesDesiredPublisher_->publish(forceMsg);
 }
+
+
+
+
+// Compute the forces for a system using optimization
+auto DynamicControlLayer::GetForces(const Eigen::MatrixXd& A, const Eigen::MatrixXd& b, const Eigen::MatrixXd& upLowBounds, const Eigen::VectorXd& weights) -> Eigen::VectorXd {
+    int numVars = A.cols();
+    Eigen::MatrixXd H = weights.asDiagonal();
+    Eigen::VectorXd f = Eigen::VectorXd::Zero(numVars);
+    Eigen::VectorXd lb = upLowBounds.col(0);
+    Eigen::VectorXd ub = upLowBounds.col(1);
+    Eigen::VectorXd lbA = b.cast<double>();
+    Eigen::VectorXd ubA = b.cast<double>();
+    qpOASES::SQProblem problem(numVars, A.rows(), qpOASES::HST_POSDEF);
+    qpOASES::Options options;
+    options.enableRegularisation = qpOASES::BT_TRUE;
+    options.terminationTolerance = 1e-6;
+    options.boundTolerance = 1e-6;
+    options.printLevel = qpOASES::PL_NONE;
+    problem.setOptions(options);
+    qpOASES::int_t nWSR = 10000;
+    qpOASES::real_t* H_d = ConvertEigenToQpOASESArray(H);
+    qpOASES::real_t* f_d = ConvertEigenToQpOASESArray(f);
+    qpOASES::real_t* A_d = ConvertEigenToQpOASESArray(A);
+    qpOASES::real_t* lb_d = ConvertEigenToQpOASESArray(lb);
+    qpOASES::real_t* ub_d = ConvertEigenToQpOASESArray(ub);
+    qpOASES::real_t* lbA_d = ConvertEigenToQpOASESArray(lbA);
+    qpOASES::real_t* ubA_d = ConvertEigenToQpOASESArray(ubA);
+    Eigen::VectorXd x(numVars);
+    if (problem.init(H_d, f_d, A_d, lb_d, ub_d, lbA_d, ubA_d, nWSR) == qpOASES::SUCCESSFUL_RETURN) {
+        problem.getPrimalSolution(x.data());
+    } else {
+        Eigen::MatrixXd A_copy = A;
+        double* thrustersWrenchMatrixData = A_copy.data();
+        int rows = A.rows();
+        int cols = A.cols();
+        double* TWPInv = new double[cols * rows];
+        double thresholdTW = 1e-4;
+        double lambdaTW = 1e-2;
+        double prodTW;
+        int flagTW;
+        rml::GT_RegPinv(thrustersWrenchMatrixData, rows, cols, TWPInv, thresholdTW, lambdaTW, &prodTW, &flagTW);
+        Eigen::Map<Eigen::MatrixXd> TWPInvMatrix(TWPInv, cols, rows);
+        x = TWPInvMatrix * b;
+        delete[] TWPInv;
+    }
+    delete[] H_d;
+    delete[] f_d;
+    delete[] A_d;
+    delete[] lb_d;
+    delete[] ub_d;
+    delete[] lbA_d;
+    delete[] ubA_d;
+    double scaleDown = 1.0;
+    for (int i = 0; i < numVars; ++i) {
+        if (x[i] > ub[i]) {
+            scaleDown = std::min(scaleDown, ub[i] / x[i]);
+        }
+        if (x[i] < lb[i]) {
+            scaleDown = std::min(scaleDown, lb[i] / x[i]);
+        }
+    }
+    if (scaleDown < 1.0) {
+        x *= scaleDown;
+    }
+    for (int i = 0; i < numVars; ++i) {
+        x[i] = std::max(lb[i], std::min(x[i], ub[i]));
+    }
+    return x;
+}
+

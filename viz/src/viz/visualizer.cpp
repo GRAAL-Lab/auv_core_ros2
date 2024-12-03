@@ -1,10 +1,10 @@
 #include "viz/visualizer.hpp"
 
-Visualizer::Visualizer(const std::string& configName) 
+Visualizer::Visualizer()
     : Node("visualizer_node") {
-    // Declare and retrieve configuration parameter
-    this->declare_parameter("config_name", configName);
-    this->get_parameter("config_name", configName_); // Store as member variable
+    // Declare and retrieve the "config_name" parameter
+    this->declare_parameter<std::string>("config_name", "default_value");  // Provide a default value if needed
+    this->get_parameter("config_name", configName_);
 
     // Get package share directory
     std::string packagePath = ament_index_cpp::get_package_share_directory("viz");

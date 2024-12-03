@@ -28,6 +28,7 @@ find_library(RML_LIBRARY NAMES rml)
 find_library(CTRL_LIBRARY NAMES ctrl_toolbox)
 find_library(IKCL_LIBRARY NAMES ikcl)
 find_package(PkgConfig REQUIRED)
+pkg_check_modules(LIBCONFIGPP REQUIRED libconfig++)
 find_package(rclcpp_lifecycle REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_library(SIX_DOF_MODEL_LIBRARY NAMES 6DOF_model REQUIRED)
@@ -47,6 +48,7 @@ add_custom_target(.Files. SOURCES ${SOURCE_FILES})
 include_directories(
   include
   ${auv_core_helper_INCLUDE_DIRS}  # Include directories for auv_core_helper
+  ${LIBCONFIGPP_INCLUDE_DIRS}      # Include directories for libconfig++
 )
 
 # Add the library directory to the linker search paths (if necessary)
@@ -90,6 +92,8 @@ foreach(target simulator_node)
     ${CTRL_LIBRARY}
     ${auv_core_helper_LIBRARIES}
     ${SIX_DOF_MODEL_LIBRARY}
+    ${LIBCONFIGPP_LIBRARIES}        # Link against libconfig++
+
   )
 endforeach()
 

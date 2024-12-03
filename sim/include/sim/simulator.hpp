@@ -22,7 +22,7 @@
 
 class Simulator : public rclcpp::Node {
 public:
-    explicit Simulator(const std::string& configName);
+    Simulator();
 
 private:
     // Callback functions
@@ -34,28 +34,14 @@ private:
     void CheckAndSetZero(Eigen::Matrix<double, 6, 1>& vec);
     Eigen::Matrix3d RotationMatrix(double roll, double pitch, double yaw);
 
-    // Dynamic model properties
-    double mass_;                                      // Vehicle mass
-    Eigen::Vector3d centerGravity_;                   // Center of Gravity
-    Eigen::Matrix3d inertiaTensor_;                   // Inertia tensor
-    Eigen::Matrix<double, 6, 1> addedMass_;           // Added mass
-    Eigen::Matrix<double, 6, 1> dampingCoefficients_; // Damping coefficients
-    double buoyancy_;                                 // Buoyancy
-    Eigen::Vector3d centerBuoyancy_;                  // Center of Buoyancy
-    Eigen::Vector3d gravityVector_;                   // Gravity vector
-
-    Eigen::MatrixXd thrusterPositions_;
-    Eigen::MatrixXd thrusterOrientations_;
+    // Dynamics model
+    std::unique_ptr<DynamicsModel> dynamicsModel_; 
 
     // State vectors
     Eigen::Matrix<double, 6, 1> poseActual_;
     Eigen::Matrix<double, 6, 1> velocityActual_;
     Eigen::Matrix<double, 6, 1> accelerationActual_;
     Eigen::VectorXd forcesDesired_;
-
-    // Dynamic matrices
-    Eigen::Matrix<double, 6, 6> inertiaMatrix_;
-    Eigen::MatrixXd thrustersWrenchMatrix_;
 
     std::string kclCurrentState_; // Default state
 

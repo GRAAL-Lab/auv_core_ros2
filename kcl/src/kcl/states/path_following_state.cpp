@@ -114,7 +114,7 @@ fsm::retval PathFollowingState::OnEntry() noexcept {
 
     // Load ALOS parameters
     std::string packagePath_ = ament_index_cpp::get_package_share_directory("auv_core_helper");
-    std::string alosPath_ = packagePath_ + "/param/alosed_params";
+    std::string alosPath_ = packagePath_ + "/param/ctrl/alosed_params";
     dynamic_goal_alos::DynamicGoalBasedALOSParams alosParams = dynamic_goal_alos::LoadALOSParamsFromConf(alosPath_);
 
     // Initialize the ALOS controller using make_unique

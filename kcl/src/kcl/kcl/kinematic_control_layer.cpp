@@ -2,10 +2,10 @@
 using namespace std::chrono_literals;
 
 
-KCL::KCL(const std::string& configName)
+KCL::KCL()
     : Node("kcl_fsm_node") {
-    // Declare and get the "config_name" parameter
-    this->declare_parameter<std::string>("config_name", configName);
+    // Declare and retrieve the "config_name" parameter
+    this->declare_parameter<std::string>("config_name", "default_value");  // Default value if not set
     std::string configNameParam;
     this->get_parameter("config_name", configNameParam);
 
@@ -14,13 +14,10 @@ KCL::KCL(const std::string& configName)
 
     // Load configuration parameters into control data
     LoadParamsFromConf(
-        configNameParam,
-        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-        nullptr, nullptr, nullptr, nullptr, nullptr,
+        configNameParam, nullptr, nullptr, nullptr,
         &ctrlData_->gainsX, &ctrlData_->gainsY, &ctrlData_->gainsZ,
         &ctrlData_->gainsRoll, &ctrlData_->gainsPitch, &ctrlData_->gainsYaw,
         &ctrlData_->maxVelocity, &ctrlData_->minVelocity);
-
 
     // Set up state transitions
     SetupTransitions();

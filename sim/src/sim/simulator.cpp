@@ -2,21 +2,33 @@
 
 constexpr double EPSILON = 0.001; // Define a small threshold value for zero comparison
 
-Simulator::Simulator(const std::string& configName)
+Simulator::Simulator()
     : Node("simulator_node"), simulationTime_(0, 0, RCL_ROS_TIME) {
     // Declare and retrieve configuration parameter
-    this->declare_parameter("config_name", configName);
+    this->declare_parameter<std::string>("config_name", "default_value");
     std::string configNameParam;
     this->get_parameter("config_name", configNameParam);
 
-    // Load parameters from configuration
-    LoadParamsFromConf(
-        configNameParam, 
-        &mass_, &centerGravity_, &inertiaTensor_, &addedMass_, &dampingCoefficients_,
-        &buoyancy_, &centerBuoyancy_, &gravityVector_, &thrusterPositions_, 
-        &thrusterOrientations_, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 
-        nullptr, nullptr, nullptr, nullptr, nullptr);
+    // Construct the dynamic model parameters path
+    std::string packagePath = ament_index_cpp::get_package_share_directory("auv_core_helper");
+    std::string dynamicModelParamsPath_ = packagePath + "/param/dynamic_model/" + configNameParam + ".conf";
 
+    // Load configuration file
+    libconfig::Config config;
+    try {
+        config.readFile(dynamicModelParamsPath_.c_str());
+    } catch (const libconfig::FileIOException &fioex) {
+        RCLCPP_ERROR(this->get_logger(), "I/O error while reading file: %s", dynamicModelParamsPath_.c_str());
+        throw std::runtime_error("Failed to load configuration file: I/O error");
+    } catch (const libconfig::ParseException &pex) {
+        RCLCPP_ERROR(this->get_logger(), "Parse error at %s:%d - %s", pex.getFile(), pex.getLine(), pex.getError());
+        throw std::runtime_error("Failed to load configuration file: Parse error");
+    }
+
+    RCLCPP_INFO(this->get_logger(), "Configuration loaded successfully from: %s", dynamicModelParamsPath_.c_str());
+
+    // Initialize the dynamics model using a smart pointer
+    dynamicsModel_ = std::make_unique<DynamicsModel>(config, configNameParam);
     // Publishers
     poseActualPublisher_ = this->create_publisher<auv_core_helper::msg::PoseStamped>(
         auv_core_helper::topicnames::pose_actual, 1);
@@ -42,13 +54,16 @@ Simulator::Simulator(const std::string& configName)
     velocityActual_.setZero(6);
     accelerationActual_.setZero(6);
 
-    // Initialize dynamic model matrices
-    inertiaMatrix_ = GetM(mass_, centerGravity_, inertiaTensor_, addedMass_);
-    thrustersWrenchMatrix_ = GetThrustersWrenchMatrix(thrusterPositions_, thrusterOrientations_);
-    forcesDesired_.resize(thrustersWrenchMatrix_.cols());
+    // Initialize forcesDesired_ with zeros
+    forcesDesired_ = Eigen::VectorXd::Zero(dynamicsModel_->GetNumThrusters());
 }
 
 void Simulator::ForcesDesiredCallback(const std_msgs::msg::Float64MultiArray::SharedPtr msg) {
+    // Ensure that the size matches the number of thrusters
+    if (msg->data.size() != dynamicsModel_->GetNumThrusters()) {
+        RCLCPP_ERROR(this->get_logger(), "ForcesDesiredCallback: Received forces vector of size %zu, expected %zu", msg->data.size(), dynamicsModel_->GetNumThrusters());
+        return;
+    }
     forcesDesired_.resize(msg->data.size());
     for (size_t i = 0; i < msg->data.size(); ++i) {
         forcesDesired_(i) = msg->data[i];
@@ -59,17 +74,11 @@ void Simulator::Simulate() {
     double dt = 0.1; // Time step
     simulationTime_ += rclcpp::Duration::from_seconds(0.1);
 
-    // Relative velocity
-    Eigen::Matrix<double, 6, 1> velocityActualRel = velocityActual_; // Example
+    // Update the dynamics model with current velocity and pose
+    dynamicsModel_->UpdateActualModel(velocityActual_, poseActual_);
 
-    Eigen::Matrix<double, 6, 6> C = GetC(velocityActualRel, mass_, centerGravity_, inertiaTensor_);
-    Eigen::Matrix<double, 6, 6> D = GetD(velocityActualRel, dampingCoefficients_);
-    Eigen::Matrix<double, 6, 1> g = GetG(poseActual_, mass_, buoyancy_, gravityVector_, centerGravity_, centerBuoyancy_);
-
-    // Forces and accelerations
-    Eigen::Matrix<double, 6, 1> b = thrustersWrenchMatrix_ * forcesDesired_ 
-                                    - (C * velocityActualRel + D * velocityActualRel + g);
-    GetAcceleration(inertiaMatrix_, b, accelerationActual_);
+    // Compute acceleration given the desired forces
+    accelerationActual_ = dynamicsModel_->ComputeAcceleration(forcesDesired_);
 
     // Update state
     velocityActual_ += accelerationActual_ * dt;

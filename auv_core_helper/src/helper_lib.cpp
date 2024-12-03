@@ -2,10 +2,7 @@
 
 namespace fs = std::filesystem;
 
-void LoadParamsFromConf(const std::string& config_name, double* m, Eigen::Vector3d* CG, Eigen::Matrix3d* I,
-                        Eigen::Matrix<double, 6, 1>* M_a_diag, Eigen::Matrix<double, 6, 1>* D_diag,
-                        double* B, Eigen::Vector3d* CB, Eigen::Vector3d* G, Eigen::MatrixXd* thruster_positions,
-                        Eigen::MatrixXd* thruster_orientations, Eigen::VectorXd* thruster_upper_limits,
+void LoadParamsFromConf(const std::string& config_name, Eigen::VectorXd* thruster_upper_limits,
                         Eigen::VectorXd* thruster_lower_limits, Eigen::VectorXd* thruster_allocation_weights,
                         Eigen::VectorXd* gainsX, Eigen::VectorXd* gainsY, Eigen::VectorXd* gainsZ,
                         Eigen::VectorXd* gainsRoll, Eigen::VectorXd* gainsPitch, Eigen::VectorXd* gainsYaw,
@@ -14,7 +11,7 @@ void LoadParamsFromConf(const std::string& config_name, double* m, Eigen::Vector
     libconfig::Config cfg;
     try {
         std::string package_path = ament_index_cpp::get_package_share_directory("auv_core_helper");
-        std::string conf_file_path = package_path + "/param/" + config_name + ".conf";
+        std::string conf_file_path = package_path + "/param/ctrl/" + config_name + ".conf";
 
         // Check if the configuration file exists
         if (!fs::exists(conf_file_path)) {
@@ -24,79 +21,7 @@ void LoadParamsFromConf(const std::string& config_name, double* m, Eigen::Vector
 
         cfg.readFile(conf_file_path.c_str());
 
-        // Load scalars and vectors
-        if (m) {
-            try {
-                *m = cfg.lookup(config_name + ".mass");
-            } catch (const libconfig::SettingNotFoundException &nfex) {
-                std::cerr << "Failed to load 'mass': " << nfex.what() << std::endl;
-            }
-        }
-        if (B) {
-            try {
-                *B = cfg.lookup(config_name + ".buoyancy");
-            } catch (const libconfig::SettingNotFoundException &nfex) {
-                std::cerr << "Failed to load 'buoyancy': " << nfex.what() << std::endl;
-            }
-        }
-
-        if (CG) {
-            try {
-                for (int i = 0; i < 3; ++i) {
-                    (*CG)[i] = cfg.lookup(config_name + ".center_of_gravity")[i];
-                }
-            } catch (const libconfig::SettingNotFoundException &nfex) {
-                std::cerr << "Failed to load 'center_of_gravity': " << nfex.what() << std::endl;
-            }
-        }
-
-        if (CB) {
-            try {
-                for (int i = 0; i < 3; ++i) {
-                    (*CB)[i] = cfg.lookup(config_name + ".center_of_buoyancy")[i];
-                }
-            } catch (const libconfig::SettingNotFoundException &nfex) {
-                std::cerr << "Failed to load 'center_of_buoyancy': " << nfex.what() << std::endl;
-            }
-        }
-
-        if (G) {
-            try {
-                for (int i = 0; i < 3; ++i) {
-                    (*G)[i] = cfg.lookup(config_name + ".gravity_vector")[i];
-                }
-            } catch (const libconfig::SettingNotFoundException &nfex) {
-                std::cerr << "Failed to load 'gravity_vector': " << nfex.what() << std::endl;
-            }
-        }
-
-        if (I) {
-            try {
-                const libconfig::Setting& inertia = cfg.lookup(config_name + ".inertia_tensor");
-                (*I) << inertia[0], 0, 0,
-                        0, inertia[1], 0,
-                        0, 0, inertia[2];
-            } catch (const libconfig::SettingNotFoundException &nfex) {
-                std::cerr << "Failed to load 'inertia_tensor': " << nfex.what() << std::endl;
-            }
-        }
-
-        // Load matrices and vectors
-        auto loadMatrix = [](const libconfig::Setting& setting, Eigen::MatrixXd& matrix, int numCols) {
-            try {
-                int length = setting.getLength();
-                int numRows = length / numCols;
-                matrix.resize(numRows, numCols);
-                for (int i = 0; i < numRows; ++i) {
-                    for (int j = 0; j < numCols; ++j) {
-                        matrix(i, j) = static_cast<double>(setting[i * numCols + j]);
-                    }
-                }
-            } catch (const libconfig::SettingNotFoundException &nfex) {
-                std::cerr << "Failed to load matrix: " << nfex.what() << std::endl;
-            }
-        };
-
+        // helper function to load a vector from the configuration file
         auto loadVector = [](const libconfig::Setting& setting, Eigen::VectorXd& vector) {
             try {
                 int length = setting.getLength();
@@ -108,45 +33,6 @@ void LoadParamsFromConf(const std::string& config_name, double* m, Eigen::Vector
                 std::cerr << "Failed to load vector: " << nfex.what() << std::endl;
             }
         };
-
-        if (M_a_diag) {
-            try {
-                for (int i = 0; i < 6; ++i) {
-                    (*M_a_diag)[i] = cfg.lookup(config_name + ".added_mass")[i];
-                }
-            } catch (const libconfig::SettingNotFoundException &nfex) {
-                std::cerr << "Failed to load 'added_mass': " << nfex.what() << std::endl;
-            }
-        }
-
-        if (D_diag) {
-            try {
-                for (int i = 0; i < 6; ++i) {
-                    (*D_diag)[i] = cfg.lookup(config_name + ".damping_coefficients")[i];
-                }
-            } catch (const libconfig::SettingNotFoundException &nfex) {
-                std::cerr << "Failed to load 'damping_coefficients': " << nfex.what() << std::endl;
-            }
-        }
-
-        if (thruster_positions) {
-            try {
-                const libconfig::Setting& positions = cfg.lookup(config_name + ".thruster_positions");
-                loadMatrix(positions, *thruster_positions, 3);
-            } catch (const libconfig::SettingNotFoundException &nfex) {
-                std::cerr << "Failed to load 'thruster_positions': " << nfex.what() << std::endl;
-            }
-        }
-
-        if (thruster_orientations) {
-            try {
-                const libconfig::Setting& orientations = cfg.lookup(config_name + ".thruster_orientations_degrees");
-                loadMatrix(orientations, *thruster_orientations, 3);
-                *thruster_orientations = thruster_orientations->array() * M_PI / 180.0; // Convert degrees to radians
-            } catch (const libconfig::SettingNotFoundException &nfex) {
-                std::cerr << "Failed to load 'thruster_orientations_degrees': " << nfex.what() << std::endl;
-            }
-        }
 
         if (thruster_upper_limits) {
             try {

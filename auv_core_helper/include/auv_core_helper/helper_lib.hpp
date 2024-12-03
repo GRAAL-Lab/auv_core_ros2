@@ -13,8 +13,12 @@
 //using namespace Eigen;
 
 // Declaration of functions
-void LoadParamsFromConf(const std::string& config_name, double* m, Eigen::Vector3d* CG, Eigen::Matrix3d* I, Eigen::Matrix<double, 6, 1>* M_a_diag, Eigen::Matrix<double, 6, 1>* D_diag, double* B, Eigen::Vector3d* CB, Eigen::Vector3d* G, Eigen::MatrixXd* thruster_positions, Eigen::MatrixXd* thruster_orientations, Eigen::VectorXd* thruster_upper_limits, Eigen::VectorXd* thruster_lower_limits, Eigen::VectorXd* thruster_allocation_weights,
-                        Eigen::VectorXd* gainsX, Eigen::VectorXd* gainsY, Eigen::VectorXd* gainsZ, Eigen::VectorXd* gainsRoll, Eigen::VectorXd* gainsPitch, Eigen::VectorXd* gainsYaw, Eigen::VectorXd* max_linear_angular_velocities, Eigen::VectorXd* min_linear_angular_velocities);
+void LoadParamsFromConf(const std::string& config_name, Eigen::VectorXd* thruster_upper_limits,
+                        Eigen::VectorXd* thruster_lower_limits, Eigen::VectorXd* thruster_allocation_weights,
+                        Eigen::VectorXd* gainsX, Eigen::VectorXd* gainsY, Eigen::VectorXd* gainsZ,
+                        Eigen::VectorXd* gainsRoll, Eigen::VectorXd* gainsPitch, Eigen::VectorXd* gainsYaw,
+                        Eigen::VectorXd* max_linear_angular_velocities, Eigen::VectorXd* min_linear_angular_velocities);
+
 void PublishEigenPose(const rclcpp::Publisher<auv_core_helper::msg::PoseStamped>::SharedPtr& publisher, const Eigen::Matrix<double, 6, 1>& pose, const rclcpp::Time& time);
 void PublishEigenVelocity(const rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr& publisher, const Eigen::Matrix<double, 6, 1>& velocity);
 void PublishEigenAcceleration(const rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr& publisher, const Eigen::Matrix<double, 6, 1>& acceleration);

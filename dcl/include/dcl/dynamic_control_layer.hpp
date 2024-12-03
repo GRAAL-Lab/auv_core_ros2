@@ -15,9 +15,12 @@
 // Dynamic model
 #include "6DOF_model.hpp"
 
+// QP headers
+#include <qpOASES.hpp>
+
 class DynamicControlLayer : public rclcpp::Node {
 public:
-    explicit DynamicControlLayer(const std::string& configName);
+    DynamicControlLayer();
 
 private:
     // Callback methods
@@ -30,6 +33,30 @@ private:
 
     void KclStateCallback(const std_msgs::msg::String::SharedPtr msg);
     void ForceComputeCallback();
+
+    Eigen::VectorXd GetForces(const Eigen::MatrixXd& A, const Eigen::MatrixXd& b, const Eigen::MatrixXd& upLowBounds, const Eigen::VectorXd& weights);
+
+    /**
+     * @brief Convert an Eigen matrix to a qpOASES array.
+     * @tparam Derived Eigen matrix type.
+     * @param m Eigen matrix.
+     * @return Pointer to the qpOASES array.
+     */
+    template <typename Derived>
+    qpOASES::real_t* ConvertEigenToQpOASESArray(const Eigen::MatrixBase<Derived>& m){
+        int rows = m.rows();
+        int cols = m.cols();
+        qpOASES::real_t* B = new qpOASES::real_t[rows * cols];
+        for (int i = 0; i < rows; ++i) {
+            for (int j = 0; j < cols; ++j) {
+                B[i * cols + j] = static_cast<qpOASES::real_t>(m(i, j));
+            }
+        }
+        return B;
+    }
+
+    // Dynamics model
+    std::unique_ptr<DynamicsModel> dynamicsModel_;
 
     // Dynamic model properties
     double mass_;                                 // Vehicle mass

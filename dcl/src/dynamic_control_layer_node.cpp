@@ -8,17 +8,9 @@
     // Initialize the ROS 2 system
     rclcpp::init(argc, argv);
 
-    // Validate input arguments
-    if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <config_name>" << std::endl;
-        return EXIT_FAILURE;
-    }
+    // Create a shared pointer to the DCL node without arguments
+    auto node = std::make_shared<DynamicControlLayer>();
 
-    // Parse the configuration name argument
-    std::string configName = argv[1];
-
-    // Create a shared pointer to the DCL node
-    auto node = std::make_shared<DynamicControlLayer>(configName);
 
     // Spin the ROS 2 node
     rclcpp::spin(node);
