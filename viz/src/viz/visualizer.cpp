@@ -1,4 +1,6 @@
 #include "viz/visualizer.hpp"
+#include <Eigen/Geometry>
+#include <fstream>  // For file checking
 
 Visualizer::Visualizer()
     : Node("visualizer_node") {
@@ -18,6 +20,7 @@ Visualizer::Visualizer()
         meshFile_ = "file://" + meshFilePath;
     } else {
         meshFile_.clear(); // Clear the mesh file path if not found
+        RCLCPP_WARN(this->get_logger(), "Mesh file not found: %s", meshFilePath.c_str());
     }
 
     // Start RViz
@@ -66,9 +69,10 @@ void Visualizer::PoseGoalCallback(const auv_core_helper::msg::PoseStamped::Share
     goalTransform.transform.translation.y = msg->y;
     goalTransform.transform.translation.z = msg->z;
 
-    Eigen::Quaterniond quaternion(Eigen::AngleAxisd(msg->yaw, Eigen::Vector3d::UnitZ()) *
-                                  Eigen::AngleAxisd(msg->pitch, Eigen::Vector3d::UnitY()) *
-                                  Eigen::AngleAxisd(msg->roll, Eigen::Vector3d::UnitX()));
+    Eigen::Quaterniond quaternion(
+        Eigen::AngleAxisd(msg->yaw, Eigen::Vector3d::UnitZ()) *
+        Eigen::AngleAxisd(msg->pitch, Eigen::Vector3d::UnitY()) *
+        Eigen::AngleAxisd(msg->roll, Eigen::Vector3d::UnitX()));
     goalTransform.transform.rotation.x = quaternion.x();
     goalTransform.transform.rotation.y = quaternion.y();
     goalTransform.transform.rotation.z = quaternion.z();
@@ -114,15 +118,16 @@ void Visualizer::PublishPose(double x, double y, double z, double roll, double p
     marker.pose.position.y = y;
     marker.pose.position.z = z;
 
+    // Create the base quaternion from yaw, pitch, roll
     Eigen::Quaterniond quaternion(
         Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()) *
         Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitY()) *
         Eigen::AngleAxisd(roll, Eigen::Vector3d::UnitX()));
 
-    marker.pose.orientation.x = quaternion.x();
-    marker.pose.orientation.y = quaternion.y();
-    marker.pose.orientation.z = quaternion.z();
-    marker.pose.orientation.w = quaternion.w();
+        marker.pose.orientation.x = quaternion.x();
+        marker.pose.orientation.y = quaternion.y();
+        marker.pose.orientation.z = quaternion.z();
+        marker.pose.orientation.w = quaternion.w();
 
     marker.scale.x = 1.0;
     marker.scale.y = 1.0;
@@ -137,7 +142,7 @@ void Visualizer::PublishPose(double x, double y, double z, double roll, double p
     }
 
     markerPublisher_->publish(marker);
-
+    // Create and send the transform for the frame
     geometry_msgs::msg::TransformStamped transform;
     transform.header.stamp = this->get_clock()->now();
     transform.header.frame_id = "world";

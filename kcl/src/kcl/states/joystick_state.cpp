@@ -21,14 +21,14 @@ fsm::retval JoystickState::Execute() noexcept {
         if (!calibrationDone) {
             CalibrateJoystick();
         } else {
-            // std::cout << "Calibration Results:" << std::endl;
-            // for (int action = 0; action < 12; ++action) {
-            //     std::cout << "Action " << action 
-            //               << " | Idle Value: " << joystickData[action][0][0]
-            //               << " | Calibrated Value: " << joystickData[action][1][0]
-            //               << " | Axis: " << joystickData[action][1][1] 
-            //               << std::endl;
-            // }
+            std::cout << "Calibration Results:" << std::endl;
+            for (int action = 0; action < 12; ++action) {
+                std::cout << "Action " << action 
+                          << " | Idle Value: " << joystickData[action][0][0]
+                          << " | Calibrated Value: " << joystickData[action][1][0]
+                          << " | Axis: " << joystickData[action][1][1] 
+                          << std::endl;
+            }
             MapJoystickToVelocityVelocites();
         }
         return fsm::ok;

@@ -31,6 +31,7 @@
 #include "states/commands.hpp"
 #include "ctrl_toolbox/pid/DigitalPID.h"
 #include "ctrl_toolbox/HelperFunctions.h"
+#include "rml/EulerRPY.h"
 
 // -------------------------
 // Base State Class for AUV FSM

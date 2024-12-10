@@ -90,19 +90,23 @@ void DynamicControlLayer::ForceComputeCallback() {
     accelerationDesired_ = (velocityDesired_ - velocityActual_) * 1;
 
     // update the actual model
-    Eigen::Matrix<double, 6, 1> lhs = dynamicsModel_->ComputeDesiredModel(accelerationDesired_ ,velocityActual_, poseActual_);
+    dynamicsModel_->UpdateModel(velocityDesired_, poseDesired_);
+
+    // Compute the left-hand side of the dynamics equation
+    Eigen::Matrix<double, 6, 1> lhs_ = dynamicsModel_->GetMassMatrix() * accelerationDesired_ + dynamicsModel_->GetCoriolisMatrix() * velocityDesired_ + dynamicsModel_->GetDampingMatrix() * velocityDesired_ + dynamicsModel_->GetRestoringForces();
 
 
     // Compute acceleration given the desired forces
     thrustersWrenchMatrix_ = dynamicsModel_->GetThrustersWrenchMatrix();
+    
 
     // Update bounds matrix
-    Eigen::MatrixXd upLowBounds(thrustersWrenchMatrix_.cols(), 2);
-    upLowBounds.col(0) = thrusterLowerLimits_;
-    upLowBounds.col(1) = thrusterUpperLimits_;
+    Eigen::MatrixXd upLowBounds_(thrustersWrenchMatrix_.cols(), 2);
+    upLowBounds_.col(0) = thrusterLowerLimits_;
+    upLowBounds_.col(1) = thrusterUpperLimits_;
 
     // Solve for thruster forces
-    Eigen::VectorXd forces = GetForces(thrustersWrenchMatrix_, lhs, upLowBounds, thrusterAllocationWeights_);
+    Eigen::VectorXd forces = GetForces(thrustersWrenchMatrix_, lhs_, upLowBounds_, thrusterAllocationWeights_);
 
     // Prepare message for publishing
     std_msgs::msg::Float64MultiArray forceMsg;
@@ -124,12 +128,12 @@ void DynamicControlLayer::ForceComputeCallback() {
 
 
 // Compute the forces for a system using optimization
-auto DynamicControlLayer::GetForces(const Eigen::MatrixXd& A, const Eigen::MatrixXd& b, const Eigen::MatrixXd& upLowBounds, const Eigen::VectorXd& weights) -> Eigen::VectorXd {
+auto DynamicControlLayer::GetForces(const Eigen::MatrixXd& A, const Eigen::MatrixXd& b, const Eigen::MatrixXd& upLowBounds_, const Eigen::VectorXd& weights) -> Eigen::VectorXd {
     int numVars = A.cols();
     Eigen::MatrixXd H = weights.asDiagonal();
     Eigen::VectorXd f = Eigen::VectorXd::Zero(numVars);
-    Eigen::VectorXd lb = upLowBounds.col(0);
-    Eigen::VectorXd ub = upLowBounds.col(1);
+    Eigen::VectorXd lb = upLowBounds_.col(0);
+    Eigen::VectorXd ub = upLowBounds_.col(1);
     Eigen::VectorXd lbA = b.cast<double>();
     Eigen::VectorXd ubA = b.cast<double>();
     qpOASES::SQProblem problem(numVars, A.rows(), qpOASES::HST_POSDEF);

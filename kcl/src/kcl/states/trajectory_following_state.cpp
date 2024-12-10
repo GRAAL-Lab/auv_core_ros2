@@ -6,35 +6,60 @@ TrajectoryFollowingState::TrajectoryFollowingState(fsm::FSM* fsm)
 
 // OnEntry
 fsm::retval TrajectoryFollowingState::OnEntry() {
-    tTotal_ = ctrlData->tpGoalTime;                    // Total duration of the trajectory in seconds
-    tCurrentStart_ = ctrlData->timeActual.seconds();  // Capture the start time of the trajectory
-    poseInitial_ = ctrlData->poseActual;              // Store the initial pose
-    poseGoal_ = ctrlData->poseGoal;                   // Store the target pose
+    tTotal_ = ctrlData->tpGoalTime;                   // Total duration of the trajectory
+    tCurrentStart_ = ctrlData->timeActual.seconds();  // Start time of the trajectory
+    poseInitial_ = ctrlData->poseActual;              // Initial pose
+    poseGoal_ = ctrlData->poseGoal;                   // Target pose
     return fsm::ok;
 }
 
 // Execute
 fsm::retval TrajectoryFollowingState::Execute() {
-    double tCurrent = ctrlData->timeActual.seconds() - tCurrentStart_; // Current elapsed time
+    double tCurrent = ctrlData->timeActual.seconds() - tCurrentStart_; // Elapsed time
 
     if (tCurrent >= tTotal_) {
-        // Stop movement if the total time is reached
+        // Trajectory time elapsed, stop the vehicle
         ctrlData->velocityDesired.setZero();
 
+        // Check goal proximity
         if ((ctrlData->poseActual - poseGoal_).norm() < 0.5) {
-            // If the goal is reached within a tolerance
             std::cout << "Time Elapsed, Goal Reached!" << std::endl;
-            fsm_->SetNextState(States::HOLD);  // Transition to the HOLD state
+            fsm_->SetNextState(States::HOLD);  // Transition to HOLD
         } else {
-            // If the goal is not reached
             std::cout << "Time Elapsed, Goal Not Reached!" << std::endl;
             fsm_->SetNextState(States::HOLD);
         }
         return fsm::ok;
     }
 
-    // Compute the next trajectory point
-    ctrlData->velocityDesired = FindNextTrajectoryPoint(poseInitial_, poseGoal_, tTotal_, tCurrent);
+    // Compute the next trajectory point velocities in world frame + Euler angle rates
+    Eigen::Matrix<double, 6, 1> velWorldEulerRates = FindNextTrajectoryPoint(poseInitial_, poseGoal_, tTotal_, tCurrent);
+
+    // Separate linear and Euler angle rates
+    Eigen::Vector3d vWorld = velWorldEulerRates.head<3>();    // Linear velocities in world frame
+    Eigen::Vector3d eulerRates = velWorldEulerRates.tail<3>(); // Euler angle rates (roll_dot, pitch_dot, yaw_dot)
+
+    // Get current orientation
+    double roll  = ctrlData->poseActual(3);
+    double pitch = ctrlData->poseActual(4);
+    double yaw   = ctrlData->poseActual(5);
+
+    rml::EulerRPY rpy(roll, pitch, yaw);
+
+    // Convert linear velocity to body frame
+    Eigen::Matrix3d R = rpy.ToRotationMatrix().matrix();
+    Eigen::Vector3d vBody = R.transpose() * vWorld;
+
+    // Convert Euler angle rates to body angular velocities
+    Eigen::Vector3d wBody = rpy.Omega(eulerRates);
+
+    // Set desired velocities in body frame
+    ctrlData->velocityDesired(0) = vBody.x();
+    ctrlData->velocityDesired(1) = vBody.y();
+    ctrlData->velocityDesired(2) = vBody.z();
+    ctrlData->velocityDesired(3) = wBody.x();
+    ctrlData->velocityDesired(4) = wBody.y();
+    ctrlData->velocityDesired(5) = wBody.z();
 
     return fsm::ok;
 }
@@ -54,11 +79,16 @@ Eigen::Matrix<double, 6, 1> TrajectoryFollowingState::FindNextTrajectoryPoint(
     Eigen::Matrix<double, 6, 1> velocityDesired;
     double tRatio = tCurrent_ / tTotal_; // Normalized time ratio
 
+    // Polynomial-based velocity profile for each DOF
     for (int i = 0; i < 6; i++) {
-        double deltaPose = poseGoal_[i] - poseInitial_[i]; // Difference between goal and initial pose
-        velocityDesired[i] = (30 * std::pow(tRatio, 2) - 60 * std::pow(tRatio, 3) + 30 * std::pow(tRatio, 4)) 
-                             * deltaPose / tTotal_;
+        double deltaPose = poseGoal_[i] - poseInitial_[i];
+        // Using a polynomial velocity profile
+        velocityDesired[i] = (30 * std::pow(tRatio, 2)
+                              - 60 * std::pow(tRatio, 3)
+                              + 30 * std::pow(tRatio, 4)) * deltaPose / tTotal_;
     }
 
+    // Note: The last three components here are Euler angle rates (roll_dot, pitch_dot, yaw_dot).
+    // We'll convert them into body-frame angular velocities in Execute().
     return velocityDesired;
 }

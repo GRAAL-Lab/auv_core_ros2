@@ -10,21 +10,20 @@ Simulator::Simulator()
     this->get_parameter("config_name", configNameParam);
 
     // Declare parameters for current velocities and simulation time step
-    this->declare_parameter<double>("current_y_velocity", 0.0); // Default y-axis current velocity
-    this->declare_parameter<double>("current_z_velocity", 0.0); // Default z-axis current velocity
+    this->declare_parameter<double>("current_y_velocity", 0.0); // Default y-axis current velocity (world frame)
+    this->declare_parameter<double>("current_z_velocity", 0.0); // Default z-axis current velocity (world frame)
     this->declare_parameter<double>("simulation_dt", 0.1);      // Default time step
 
-    
     this->get_parameter("current_y_velocity", currentYVelocity_);
     this->get_parameter("current_z_velocity", currentZVelocity_);
     this->get_parameter("simulation_dt", dt_);
 
-    std::cout << "Current y velocity: " << currentYVelocity_ << std::endl;
-    std::cout << "Current z velocity: " << currentZVelocity_ << std::endl;
+    std::cout << "Current y velocity (world frame): " << currentYVelocity_ << std::endl;
+    std::cout << "Current z velocity (world frame): " << currentZVelocity_ << std::endl;
     std::cout << "Simulation time step: " << dt_ << std::endl;
 
-
     // Store parameters
+    // currentVelocity_ is initially specified in world frame
     currentVelocity_ << 0.0, currentYVelocity_, currentZVelocity_, 0.0, 0.0, 0.0;
 
     // Construct the dynamic model parameters path
@@ -70,12 +69,17 @@ Simulator::Simulator()
                                                std::bind(&Simulator::Simulate, this));
 
     // Initialize state vectors
+    // Pose in world frame (x, y, z, roll, pitch, yaw)
     poseActual_.setZero(6);
+    // Velocity in body frame (u, v, w, p, q, r)
     velocityActual_.setZero(6);
+    // Acceleration in body frame
     accelerationActual_.setZero(6);
 
     // Initialize forcesDesired_ with zeros
     forcesDesired_ = Eigen::VectorXd::Zero(dynamicsModel_->GetNumThrusters());
+
+    RCLCPP_INFO(this->get_logger(), "Simulator initialized (body-frame velocities).");
 }
 
 void Simulator::ForcesDesiredCallback(const std_msgs::msg::Float64MultiArray::SharedPtr msg) {
@@ -93,18 +97,47 @@ void Simulator::ForcesDesiredCallback(const std_msgs::msg::Float64MultiArray::Sh
 void Simulator::Simulate() {
     simulationTime_ += rclcpp::Duration::from_seconds(dt_);
 
-    // Define current velocity in the world frame using parameters
-    Eigen::Matrix<double, 6, 1> velocityActualRel_ = velocityActual_ - currentVelocity_;
+    // Use EulerRPY to get the rotation matrix
+    rml::EulerRPY rpy(poseActual_(3), poseActual_(4), poseActual_(5));
+    Eigen::Matrix3d R = rpy.ToRotationMatrix().matrix();
 
-    // Update the dynamics model with current velocity and pose
-    dynamicsModel_->UpdateActualModel(velocityActualRel_, poseActual_);
+    // Convert current velocity from world frame to body frame
+    Eigen::Vector3d currentVelLinearWorld(currentVelocity_(0), currentVelocity_(1), currentVelocity_(2));
+    Eigen::Vector3d currentVelLinearBody = R.transpose() * currentVelLinearWorld;
 
-    // Compute acceleration given the desired forces
+    // No angular current assumed
+    Eigen::Matrix<double,6,1> currentVelocityBody;
+    currentVelocityBody << currentVelLinearBody(0), currentVelLinearBody(1), currentVelLinearBody(2), 0.0, 0.0, 0.0;
+
+    // velocityActual_ in body frame, so is currentVelocityBody
+    Eigen::Matrix<double, 6, 1> velocityActualRel_ = velocityActual_ - currentVelocityBody;
+
+    // Update the dynamics model (pose in world frame, velocity in body frame)
+    dynamicsModel_->UpdateModel(velocityActualRel_, poseActual_);
+
+    // Compute acceleration in body frame
     accelerationActual_ = dynamicsModel_->ComputeAcceleration(forcesDesired_);
 
-    // Update state
+    // Integrate velocity in body frame
     velocityActual_ += accelerationActual_ * dt_;
-    poseActual_ += velocityActual_ * dt_;
+
+    // Convert body-frame linear velocity to world frame for position integration
+    Eigen::Vector3d vBody(velocityActual_(0), velocityActual_(1), velocityActual_(2));
+    Eigen::Vector3d vWorld = R * vBody;
+
+    // Integrate position in world frame
+    poseActual_.x() += vWorld.x() * dt_;
+    poseActual_.y() += vWorld.y() * dt_;
+    poseActual_.z() += vWorld.z() * dt_;
+
+    // Convert body angular velocities to Euler angle rates using EulerRPY
+    Eigen::Vector3d wBody(velocityActual_(3), velocityActual_(4), velocityActual_(5));
+    Eigen::Vector3d eulerRates = rpy.Derivative(wBody);
+
+    // Integrate orientation
+    poseActual_(3) += eulerRates(0) * dt_; // roll
+    poseActual_(4) += eulerRates(1) * dt_; // pitch
+    poseActual_(5) += eulerRates(2) * dt_; // yaw
 
     // Reset conditions
     if (kclCurrentState_ == "RESET" || poseActual_.norm() > 1000.0) {
@@ -131,10 +164,4 @@ void Simulator::CheckAndSetZero(Eigen::Matrix<double, 6, 1>& vec) {
             vec(i) = 0.0;
         }
     }
-}
-
-Eigen::Matrix3d Simulator::RotationMatrix(double roll, double pitch, double yaw) {
-    return (Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()) *
-            Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitY()) *
-            Eigen::AngleAxisd(roll, Eigen::Vector3d::UnitX())).toRotationMatrix();
 }
