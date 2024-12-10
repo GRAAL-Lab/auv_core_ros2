@@ -30,7 +30,7 @@ DynamicControlLayer::DynamicControlLayer()
     RCLCPP_INFO(this->get_logger(), "Configuration loaded successfully from: %s", dynamicModelParamsPath_.c_str());
 
     // Initialize the dynamics model using a smart pointer
-    dynamicsModel_ = std::make_unique<DynamicsModel>(config, configNameParam);
+    dynamicsModel_ = std::make_unique<SixDOF::DynamicsModel>(config, configNameParam);
 
     // Subscriptions
     poseDesiredSubscriber_ = this->create_subscription<auv_core_helper::msg::PoseStamped>(

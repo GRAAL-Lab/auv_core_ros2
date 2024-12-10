@@ -45,7 +45,7 @@ Simulator::Simulator()
     RCLCPP_INFO(this->get_logger(), "Configuration loaded successfully from: %s", dynamicModelParamsPath_.c_str());
 
     // Initialize the dynamics model using a smart pointer
-    dynamicsModel_ = std::make_unique<DynamicsModel>(config, configNameParam);
+    dynamicsModel_ = std::make_unique<SixDOF::DynamicsModel>(config, configNameParam);
 
     // Publishers
     poseActualPublisher_ = this->create_publisher<auv_core_helper::msg::PoseStamped>(
@@ -85,7 +85,7 @@ Simulator::Simulator()
 void Simulator::ForcesDesiredCallback(const std_msgs::msg::Float64MultiArray::SharedPtr msg) {
     // Ensure that the size matches the number of thrusters
     if (msg->data.size() != dynamicsModel_->GetNumThrusters()) {
-        RCLCPP_ERROR(this->get_logger(), "ForcesDesiredCallback: Received forces vector of size %zu, expected %zu", msg->data.size(), dynamicsModel_->GetNumThrusters());
+    RCLCPP_ERROR(this->get_logger(), "ForcesDesiredCallback: Received forces vector of size %zu, expected %zu", msg->data.size(), dynamicsModel_->GetNumThrusters());
         return;
     }
     forcesDesired_.resize(msg->data.size());

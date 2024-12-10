@@ -56,7 +56,7 @@ private:
     }
 
     // Dynamics model
-    std::unique_ptr<DynamicsModel> dynamicsModel_;
+    std::unique_ptr<SixDOF::DynamicsModel> dynamicsModel_; 
 
     // Dynamic model properties
     double mass_;                                 // Vehicle mass
