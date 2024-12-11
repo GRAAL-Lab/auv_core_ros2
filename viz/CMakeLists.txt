@@ -24,14 +24,9 @@ find_package(auv_core_helper REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(ament_index_cpp REQUIRED)
-find_library(RML_LIBRARY NAMES rml)
-find_library(CTRL_LIBRARY NAMES ctrl_toolbox)
-find_library(IKCL_LIBRARY NAMES ikcl)
 find_package(PkgConfig REQUIRED)
 find_package(rclcpp_lifecycle REQUIRED)
 find_package(nav_msgs REQUIRED)
-find_library(SIX_DOF_MODEL_LIBRARY NAMES 6DOF_model REQUIRED)
-
 
 # Add files in the tree of "Projects" view in QtCreator
 file(GLOB_RECURSE SOURCE_FILES
@@ -85,11 +80,7 @@ foreach(target visualizer_node)
     nav_msgs
   )
   target_link_libraries(${target}
-    ${RML_LIBRARY}
-    ${IKCL_LIBRARY}
-    ${CTRL_LIBRARY}
     ${auv_core_helper_LIBRARIES}
-    ${SIX_DOF_MODEL_LIBRARY}
   )
 endforeach()
 

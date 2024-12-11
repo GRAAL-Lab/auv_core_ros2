@@ -25,13 +25,11 @@ find_package(sensor_msgs REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(ament_index_cpp REQUIRED)
 find_library(RML_LIBRARY NAMES rml)
-find_library(CTRL_LIBRARY NAMES ctrl_toolbox)
-find_library(IKCL_LIBRARY NAMES ikcl)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(LIBCONFIGPP REQUIRED libconfig++)
 find_package(rclcpp_lifecycle REQUIRED)
 find_package(nav_msgs REQUIRED)
-find_library(SIX_DOF_MODEL_LIBRARY NAMES underwater_vehicle_model REQUIRED)
+find_library(UNDERWATER_VEHICLE_MODEL NAMES underwater_vehicle_model REQUIRED)
 
 
 # Add files in the tree of "Projects" view in QtCreator
@@ -88,12 +86,9 @@ foreach(target simulator_node)
   )
   target_link_libraries(${target}
     ${RML_LIBRARY}
-    ${IKCL_LIBRARY}
-    ${CTRL_LIBRARY}
     ${auv_core_helper_LIBRARIES}
-    ${SIX_DOF_MODEL_LIBRARY}
-    ${LIBCONFIGPP_LIBRARIES}        # Link against libconfig++
-
+    ${UNDERWATER_VEHICLE_MODEL}
+    ${LIBCONFIGPP_LIBRARIES}
   )
 endforeach()
 
