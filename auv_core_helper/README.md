@@ -1,43 +1,40 @@
 # AUV Core Helper Package
 
-TO DO
+## Overview
 
-## Dependencies
+The **AUV Core Helper** package provides utility functions and tools to support **AUV_CORE_ROS2** in its operation. It includes functionalities for parameter loading, publishing vehicle state messages, and converting angular velocities to Euler rates. This package is designed to be a lightweight.
 
-To build and use the `auv_core_helper` Package, the following dependencies must be installed on your system:
 
-- **qpOASES**: An open-source C++ implementation of the online active set strategy for quadratic programming (QP).
-- **GRAAL Utils**: A collection of software utils and guides.
-- **PkgConfig**: A program which helps to configure compiler and linker flags for development libraries
+## Installation
 
-## Installation Instructions
+### Prerequisites
+To build and use the `AUV Core Helper` package, ensure the following dependencies are installed:
 
-### Install qpOASES
-The auv_core_helper Package depends on the shared library version of qpOASES. Follow these steps to install qpOASES from its GitHub repository.
+- [Eigen](https://eigen.tuxfamily.org/) (for linear algebra computations)
+- [PkgConfig](https://github.com/pkgconf/pkgconf) (for configuration management)
+- [ROS 2](https://docs.ros.org/) (tested with Humble)
 
-```bash
-git clone https://github.com/coin-or/qpOASES.git
-cd qpOASES
-mkdir build && cd build
-cmake -DBUILD_SHARED_LIBS=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON ..
-make
-sudo make install
-```
+### Building the package
+   ```bash
+   git clone https://bitbucket.org/isme_robotics/auv_core_ros2/src/main/
+   colcon build --packages-select auv_core_helper
+   source install/setup.bash
+   ```
 
-### Install GRAAL Utils
 
-My advice is to install the full graal_utils libs by creating a graal_ws and running the bash script.
+## Topics
 
-```bash
-git clone git@bitbucket.org:isme_robotics/graal_utils.git
-cd graal_utils/scripts
-bash install_update_graal_libs.sh
-```
-### Install PkgConfig
+The package defines the following message types:
 
-Just to use libconfig I am using PkgConfig as i found some pcs find trouble finding libconfig.
+- `PoseStamped`: Used for pose-related information.
+- `ControlCommand`: Custom service for control commands.
 
-```bash
-sudo apt-get install pkg-config
-```
 
+## Author Details
+
+- **LinkedIn**: [Youssef Attia](https://www.linkedin.com/)
+- **Email**: youssef.attia@edu.unige.it
+
+## License
+
+This project is licensed under the MIT License. See the `LICENSE.md` file for details.

@@ -14,13 +14,14 @@ The **Visualizer** node provides a real-time visualization of underwater vehicle
 ### Prerequisites
 To build and use the `Visualizer` node, ensure the following dependencies are installed:
 
+- [auv_core_helper](https://bitbucket.org/isme_robotics/auv_core_ros2/src/main/) (helper pkg)
 - [Eigen](https://eigen.tuxfamily.org/) (for linear algebra computations)
 - [ROS 2](https://docs.ros.org/) (tested with Humble)
 - [RViz 2](https://docs.ros.org/en/rolling/Tutorials/RViz2.html)
 
 ### Building the Node
    ```bash
-   git clone https://bitbucket.org/isme_robotics/auv_core_ros2/src
+   git clone https://bitbucket.org/isme_robotics/auv_core_ros2/src/main/
    colcon build --packages-select viz
    source install/setup.bash
    ```
