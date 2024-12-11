@@ -45,7 +45,7 @@ Simulator::Simulator()
     RCLCPP_INFO(this->get_logger(), "Configuration loaded successfully from: %s", dynamicModelParamsPath_.c_str());
 
     // Initialize the dynamics model using a smart pointer
-    dynamicsModel_ = std::make_unique<SixDOF::DynamicsModel>(config, configNameParam);
+    dynamicsModel_ = std::make_unique<mvm::DynamicsModel>(config, configNameParam);
 
     // Publishers
     poseActualPublisher_ = this->create_publisher<auv_core_helper::msg::PoseStamped>(

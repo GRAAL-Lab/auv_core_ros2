@@ -13,7 +13,7 @@
 #include "auv_msgs_ros2/topicnames.hpp"
 
 // Dynamic model
-#include "6DOF_model.hpp"
+#include "underwater_vehicle_model.hpp"
 
 // QP headers
 #include <qpOASES.hpp>
@@ -56,7 +56,7 @@ private:
     }
 
     // Dynamics model
-    std::unique_ptr<SixDOF::DynamicsModel> dynamicsModel_; 
+    std::unique_ptr<mvm::DynamicsModel> dynamicsModel_; 
 
     // Dynamic model properties
     double mass_;                                 // Vehicle mass

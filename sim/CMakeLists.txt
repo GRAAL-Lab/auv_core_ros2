@@ -31,7 +31,7 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(LIBCONFIGPP REQUIRED libconfig++)
 find_package(rclcpp_lifecycle REQUIRED)
 find_package(nav_msgs REQUIRED)
-find_library(SIX_DOF_MODEL_LIBRARY NAMES 6DOF_model REQUIRED)
+find_library(SIX_DOF_MODEL_LIBRARY NAMES underwater_vehicle_model REQUIRED)
 
 
 # Add files in the tree of "Projects" view in QtCreator

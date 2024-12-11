@@ -9,7 +9,7 @@
 
 // AUV-specific headers
 #include "auv_core_helper/msg/pose_stamped.hpp"
-#include "6DOF_model.hpp"
+#include "underwater_vehicle_model.hpp"
 #include "auv_core_helper/helper_lib.hpp"
 #include "auv_msgs_ros2/topicnames.hpp"
 
@@ -35,7 +35,7 @@ private:
     Eigen::Matrix3d RotationMatrix(double roll, double pitch, double yaw);
 
     // Dynamics model
-    std::unique_ptr<SixDOF::DynamicsModel> dynamicsModel_; 
+    std::unique_ptr<mvm::DynamicsModel> dynamicsModel_; 
 
     // State vectors
     Eigen::Matrix<double, 6, 1> poseActual_;

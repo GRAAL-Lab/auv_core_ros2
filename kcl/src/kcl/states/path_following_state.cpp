@@ -155,19 +155,17 @@ fsm::retval PathFollowingState::Execute() noexcept {
         positionXError_ = ctrlData->poseGoal(0) - ctrlData->poseActual(0);
         positionYError_ = ctrlData->poseGoal(1) - ctrlData->poseActual(1);
         positionZError_ = ctrlData->poseGoal(2) - ctrlData->poseActual(2);
-        rollError_ = ctrlData->poseGoal(3) - ctrlData->poseActual(3);
-        pitchError_ = ctrlData->poseGoal(4) - ctrlData->poseActual(4);
-        yawError_ = ctrlData->poseGoal(5) - ctrlData->poseActual(5);
+        rollError_      =  ctb::AngleDifference(ctrlData->poseGoal(3), ctrlData->poseActual(3));
+        pitchError_     =  ctb::AngleDifference(ctrlData->poseGoal(4), ctrlData->poseActual(4));
+        yawError_       =  ctb::AngleDifference(ctrlData->poseGoal(5), ctrlData->poseActual(5));
 
+        // Normalize orientation errors for safety
         ctb::NormalizeAngle(rollError_);
         ctb::NormalizeAngle(yawError_);
         ctb::NormalizeAngle(pitchError_);
 
         // Convert linear position errors to body frame
-        double roll  = ctrlData->poseActual(3);
-        double pitch = ctrlData->poseActual(4);
-        double yaw   = ctrlData->poseActual(5);
-        rml::EulerRPY rpy(roll, pitch, yaw);
+        rml::EulerRPY rpy(ctrlData->poseActual(3), ctrlData->poseActual(4), ctrlData->poseActual(5));
         Eigen::Matrix3d R = rpy.ToRotationMatrix().matrix();
 
         Eigen::Vector3d errorWorld(positionXError_, positionYError_, positionZError_);
@@ -240,19 +238,17 @@ fsm::retval PathFollowingState::Execute() noexcept {
         positionXError_ = ctrlData->poseGoal(0) - ctrlData->poseActual(0);
         positionYError_ = ctrlData->poseGoal(1) - ctrlData->poseActual(1);
         positionZError_ = ctrlData->poseGoal(2) - ctrlData->poseActual(2);
-        rollError_ = ctrlData->poseGoal(3) - ctrlData->poseActual(3);
-        pitchError_ = ctrlData->poseGoal(4) - ctrlData->poseActual(4);
-        yawError_ = ctrlData->poseGoal(5) - ctrlData->poseActual(5);
+        rollError_      =  ctb::AngleDifference(ctrlData->poseGoal(3), ctrlData->poseActual(3));
+        pitchError_     =  ctb::AngleDifference(ctrlData->poseGoal(4), ctrlData->poseActual(4));
+        yawError_       =  ctb::AngleDifference(ctrlData->poseGoal(5), ctrlData->poseActual(5));
+
 
         ctb::NormalizeAngle(rollError_);
         ctb::NormalizeAngle(yawError_);
         ctb::NormalizeAngle(pitchError_);
 
         // Convert position error to body frame
-        double roll  = ctrlData->poseActual(3);
-        double pitch = ctrlData->poseActual(4);
-        double yaw   = ctrlData->poseActual(5);
-        rml::EulerRPY rpy(roll, pitch, yaw);
+        rml::EulerRPY rpy(ctrlData->poseActual(3), ctrlData->poseActual(4), ctrlData->poseActual(5));
         Eigen::Matrix3d R = rpy.ToRotationMatrix().matrix();
         Eigen::Vector3d errorWorld(positionXError_, positionYError_, positionZError_);
         Eigen::Vector3d errorBody = R.transpose() * errorWorld;
