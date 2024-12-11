@@ -56,7 +56,7 @@ private:
     }
 
     // Dynamics model
-    std::unique_ptr<mvm::DynamicsModel> dynamicsModel_; 
+    std::unique_ptr<mvm::UnderwaterVehicleModel> dynamicsModel_; 
 
     // Dynamic model properties
     double mass_;                                 // Vehicle mass

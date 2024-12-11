@@ -22,6 +22,9 @@
 #include "auv_msgs_ros2/topicnames.hpp"
 #include "nav_msgs/msg/path.hpp"
 
+#include <Eigen/Geometry>
+#include <fstream>  // For file checking
+
 
 
 class Visualizer : public rclcpp::Node {

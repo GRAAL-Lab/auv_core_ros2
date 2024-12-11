@@ -1,6 +1,4 @@
 #include "viz/visualizer.hpp"
-#include <Eigen/Geometry>
-#include <fstream>  // For file checking
 
 Visualizer::Visualizer()
     : Node("visualizer_node") {

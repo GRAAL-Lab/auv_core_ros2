@@ -35,7 +35,7 @@ private:
     Eigen::Matrix3d RotationMatrix(double roll, double pitch, double yaw);
 
     // Dynamics model
-    std::unique_ptr<mvm::DynamicsModel> dynamicsModel_; 
+    std::unique_ptr<mvm::UnderwaterVehicleModel> dynamicsModel_; 
 
     // State vectors
     Eigen::Matrix<double, 6, 1> poseActual_;
