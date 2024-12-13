@@ -159,10 +159,10 @@ fsm::retval PathFollowingState::Execute() noexcept {
         pitchError_     =  ctb::AngleDifference(ctrlData->poseGoal(4), ctrlData->poseActual(4));
         yawError_       =  ctb::AngleDifference(ctrlData->poseGoal(5), ctrlData->poseActual(5));
 
-        // Normalize orientation errors for safety
-        ctb::NormalizeAngle(rollError_);
-        ctb::NormalizeAngle(yawError_);
-        ctb::NormalizeAngle(pitchError_);
+        // // Normalize orientation errors for safety
+        // ctb::NormalizeAngle(rollError_);
+        // ctb::NormalizeAngle(yawError_);
+        // ctb::NormalizeAngle(pitchError_);
 
         // Convert linear position errors to body frame
         rml::EulerRPY rpy(ctrlData->poseActual(3), ctrlData->poseActual(4), ctrlData->poseActual(5));
@@ -243,9 +243,9 @@ fsm::retval PathFollowingState::Execute() noexcept {
         yawError_       =  ctb::AngleDifference(ctrlData->poseGoal(5), ctrlData->poseActual(5));
 
 
-        ctb::NormalizeAngle(rollError_);
-        ctb::NormalizeAngle(yawError_);
-        ctb::NormalizeAngle(pitchError_);
+        // ctb::NormalizeAngle(rollError_);
+        // ctb::NormalizeAngle(yawError_);
+        // ctb::NormalizeAngle(pitchError_);
 
         // Convert position error to body frame
         rml::EulerRPY rpy(ctrlData->poseActual(3), ctrlData->poseActual(4), ctrlData->poseActual(5));

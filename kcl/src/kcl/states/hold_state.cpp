@@ -53,10 +53,10 @@ fsm::retval HoldState::Execute() noexcept {
     yawError_       =  ctb::AngleDifference(ctrlData->poseGoal(5), ctrlData->poseActual(5));
 
 
-    // Normalize orientation errors for safety
-    ctb::NormalizeAngle(rollError_);
-    ctb::NormalizeAngle(yawError_);
-    ctb::NormalizeAngle(pitchError_);
+    // // Normalize orientation errors for safety
+    // ctb::NormalizeAngle(rollError_);
+    // ctb::NormalizeAngle(yawError_);
+    // ctb::NormalizeAngle(pitchError_);
 
 
     // Convert linear position errors to body frame
