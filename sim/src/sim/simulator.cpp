@@ -1,6 +1,6 @@
 #include "sim/simulator.hpp"
 
-constexpr double EPSILON = 0.001; // Define a small threshold value for zero comparison
+constexpr double EPSILON = 0.00001; // Define a small threshold value for zero comparison
 
 Simulator::Simulator()
     : Node("simulator_node"), simulationTime_(0, 0, RCL_ROS_TIME) {
@@ -148,6 +148,8 @@ void Simulator::Simulate() {
     }
 
     CheckAndSetZero(poseActual_);
+    CheckAndSetZero(velocityActual_);
+    CheckAndSetZero(accelerationActual_);
     PublishEigenPose(poseActualPublisher_, poseActual_, simulationTime_);
     PublishEigenVelocity(velocityActualPublisher_, velocityActual_);
     PublishEigenAcceleration(accelerationActualPublisher_, accelerationActual_);
