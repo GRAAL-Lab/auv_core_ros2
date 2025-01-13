@@ -47,7 +47,7 @@
             std::bind(&Visualizer::PathCallback, this, std::placeholders::_1));
 
         // Timer to publish a default pose if no data is received
-        timer_ = this->create_wall_timer(std::chrono::milliseconds(100), [this]() {
+        timer_ = this->create_wall_timer(std::chrono::milliseconds(10), [this]() {
             if (!firstPoseReceived_) {
                 PublishPose(0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
             }

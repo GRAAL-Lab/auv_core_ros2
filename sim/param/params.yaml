@@ -2,4 +2,4 @@ simulator:
   ros__parameters:
     current_y_velocity: 0.0 # water current velocity in y direction in m/s
     current_z_velocity: 0.0 # water current velocity in z direction in m/s
-    simulation_dt: 0.1    # simulation time step in seconds
+    simulation_dt: 0.01    # simulation time step in seconds
