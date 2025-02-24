@@ -76,6 +76,8 @@ fsm::retval HoldState::Execute() noexcept {
     wDesired[0] = -pidRoll_.Compute(0, rollError_);
     wDesired[1] = -pidPitch_.Compute(0, pitchError_);
     wDesired[2] = -pidYaw_.Compute(0, yawError_);
+    
+
 
     // Assign body-frame angular velocities directly
     ctrlData->velocityDesired(3) = wDesired[0];

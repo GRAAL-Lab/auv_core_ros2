@@ -1,6 +1,6 @@
 # Kinematic Control Layer Package
 
-TO DO
+UNDER DEVLOPMENT
 
 ## Dependencies
 

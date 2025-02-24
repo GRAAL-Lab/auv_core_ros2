@@ -176,6 +176,7 @@ fsm::retval PathFollowingState::Execute() noexcept {
         ctrlData->velocityDesired(1) = -pidY_.Compute(0, errorBody.y());
         ctrlData->velocityDesired(2) = -pidZ_.Compute(0, errorBody.z());
 
+
         // Compute body-frame angular velocities using PID
         Eigen::Vector3d wDesired = Eigen::Vector3d::Zero();
         wDesired[0] = -pidRoll_.Compute(0, rollError_);
@@ -197,6 +198,7 @@ fsm::retval PathFollowingState::Execute() noexcept {
 
     } else {
         double intervalEnd = std::min(currentAbscissa_ + delta_, path->EndParameter());
+
         closestPointAbscissa_ = path->FindAbscissaClosestPointOnInterval(ctrlData->poseActual.head(3), currentAbscissa_, intervalEnd);
 
         Eigen::Vector3d currentPoint = path->At(closestPointAbscissa_);
@@ -227,6 +229,7 @@ fsm::retval PathFollowingState::Execute() noexcept {
             return fsm::ok;
         }
 
+
         ctrlData->poseGoal(0) = nextPoint.x();
         ctrlData->poseGoal(1) = nextPoint.y();
         ctrlData->poseGoal(2) = nextPoint.z();
@@ -242,7 +245,6 @@ fsm::retval PathFollowingState::Execute() noexcept {
         pitchError_     =  ctb::AngleDifference(ctrlData->poseGoal(4), ctrlData->poseActual(4));
         yawError_       =  ctb::AngleDifference(ctrlData->poseGoal(5), ctrlData->poseActual(5));
 
-
         // ctb::NormalizeAngle(rollError_);
         // ctb::NormalizeAngle(yawError_);
         // ctb::NormalizeAngle(pitchError_);
@@ -252,18 +254,17 @@ fsm::retval PathFollowingState::Execute() noexcept {
         Eigen::Matrix3d R = rpy.ToRotationMatrix().matrix();
         Eigen::Vector3d errorWorld(positionXError_, positionYError_, positionZError_);
         Eigen::Vector3d errorBody = R.transpose() * errorWorld;
-
         // PID on body-frame linear errors
         ctrlData->velocityDesired(0) = -pidX_.Compute(0, errorBody.x());
         ctrlData->velocityDesired(1) = -pidY_.Compute(0, errorBody.y());
         ctrlData->velocityDesired(2) = -pidZ_.Compute(0, errorBody.z());
+
 
         // PID on angular errors for body-frame angular velocities
         Eigen::Vector3d wDesired = Eigen::Vector3d::Zero();
         wDesired[0] = -pidRoll_.Compute(0, rollError_);
         wDesired[1] = -pidPitch_.Compute(0, pitchError_);
         wDesired[2] = -pidYaw_.Compute(0, yawError_);
-
         // Assign body-frame angular velocities directly
         ctrlData->velocityDesired(3) = wDesired[0];
         ctrlData->velocityDesired(4) = wDesired[1];
@@ -277,9 +278,14 @@ fsm::retval PathFollowingState::Execute() noexcept {
         double tangentsDifferenceNorm = (goalDirection - currentDirection).norm();
 
         delta_ = alosController_->UpdateLookAheadDistance(crossTrackError_, verticalTrackError_, tangentsDifferenceNorm);
-
         double path_completed = (closestPointAbscissa_ / path->EndParameter()) * 100.0;
-        RCLCPP_INFO(rclcpp::get_logger("PathFollowingState"), "Delta: %f, Path completed: %f%%", delta_, path_completed);
+        //print cte, vte, delta, time, path_completed in diffrent lines
+        RCLCPP_INFO(rclcpp::get_logger("PathFollowingState"), "Cross-track error: %f", crossTrackError_);
+        RCLCPP_INFO(rclcpp::get_logger("PathFollowingState"), "Vertical-track error: %f", verticalTrackError_);
+        RCLCPP_INFO(rclcpp::get_logger("PathFollowingState"), "Delta: %f", delta_);
+        RCLCPP_INFO(rclcpp::get_logger("PathFollowingState"), "Time: %f", ctrlData->timeActual.seconds());
+        RCLCPP_INFO(rclcpp::get_logger("PathFollowingState"), "Path completed: %f", path_completed);
+        
 
         currentAbscissa_ = closestPointAbscissa_;
         if (path_completed >= 99.95) {
