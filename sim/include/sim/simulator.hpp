@@ -8,7 +8,7 @@
 #include "std_msgs/msg/string.hpp"
 
 // AUV-specific headers
-#include "auv_core_helper/msg/pose_stamped.hpp"
+#include <geometry_msgs/msg/pose_stamped.hpp>
 #include "underwater_vehicle_model.hpp"
 #include "auv_core_helper/helper_lib.hpp"
 #include "auv_msgs_ros2/topicnames.hpp"
@@ -51,7 +51,7 @@ private:
     std::string kclCurrentState_; // Default state
 
     // ROS 2 communication
-    rclcpp::Publisher<auv_core_helper::msg::PoseStamped>::SharedPtr poseActualPublisher_;
+    rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr poseActualPublisher_;
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr velocityActualPublisher_;
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr accelerationActualPublisher_;
 

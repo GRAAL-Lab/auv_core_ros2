@@ -8,7 +8,7 @@
 #include "std_msgs/msg/string.hpp"
 
 // AUV-specific headers
-#include "auv_core_helper/msg/pose_stamped.hpp"
+#include <geometry_msgs/msg/pose_stamped.hpp>
 #include "auv_core_helper/helper_lib.hpp"
 #include "auv_msgs_ros2/topicnames.hpp"
 
@@ -24,11 +24,11 @@ public:
 
 private:
     // Callback methods
-    void PoseDesiredCallback(const auv_core_helper::msg::PoseStamped::SharedPtr msg);
+    void PoseDesiredCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
     void VelocityDesiredCallback(const geometry_msgs::msg::Twist::SharedPtr msg);
     void AccelerationDesiredCallback(const geometry_msgs::msg::Twist::SharedPtr msg);
 
-    void PoseActualCallback(const auv_core_helper::msg::PoseStamped::SharedPtr msg);
+    void PoseActualCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
     void VelocityActualCallback(const geometry_msgs::msg::Twist::SharedPtr msg);
 
     void KclStateCallback(const std_msgs::msg::String::SharedPtr msg);
@@ -92,11 +92,11 @@ private:
     std::string kclCurrentState_; // Current state
 
     // ROS 2 communication
-    rclcpp::Subscription<auv_core_helper::msg::PoseStamped>::SharedPtr poseDesiredSubscriber_;
+    rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr poseDesiredSubscriber_;
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr velocityDesiredSubscriber_;
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr accelerationDesiredSubscriber_;
 
-    rclcpp::Subscription<auv_core_helper::msg::PoseStamped>::SharedPtr poseActualSubscriber_;
+    rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr poseActualSubscriber_;
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr velocityActualSubscriber_;
 
     rclcpp::TimerBase::SharedPtr forceComputeTimer_;

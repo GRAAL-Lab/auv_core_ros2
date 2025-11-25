@@ -34,7 +34,7 @@ DynamicControlLayer::DynamicControlLayer()
     dynamicsModel_ = std::make_unique<mvm::UnderwaterVehicleModel>(config, configNameParam);
 
     // Subscriptions
-    poseDesiredSubscriber_ = this->create_subscription<auv_core_helper::msg::PoseStamped>(
+    poseDesiredSubscriber_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
         auv_core_helper::topicnames::pose_desired, 1, 
         std::bind(&DynamicControlLayer::PoseDesiredCallback, this, std::placeholders::_1));
 
@@ -42,7 +42,7 @@ DynamicControlLayer::DynamicControlLayer()
         auv_core_helper::topicnames::velocity_desired, 1, 
         std::bind(&DynamicControlLayer::VelocityDesiredCallback, this, std::placeholders::_1));
 
-    poseActualSubscriber_ = this->create_subscription<auv_core_helper::msg::PoseStamped>(
+    poseActualSubscriber_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
         auv_core_helper::topicnames::pose_actual, 1, 
         std::bind(&DynamicControlLayer::PoseActualCallback, this, std::placeholders::_1));
 
@@ -64,8 +64,8 @@ DynamicControlLayer::DynamicControlLayer()
         std::bind(&DynamicControlLayer::ForceComputeCallback, this));
 }
 
-void DynamicControlLayer::PoseDesiredCallback(const auv_core_helper::msg::PoseStamped::SharedPtr msg) {
-    poseDesired_ << msg->x, msg->y, msg->z, msg->roll, msg->pitch, msg->yaw;
+void DynamicControlLayer::PoseDesiredCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
+    poseDesired_ = PoseStampedMsgToEigen(*msg);
 }
 
 void DynamicControlLayer::VelocityDesiredCallback(const geometry_msgs::msg::Twist::SharedPtr msg) {
@@ -73,8 +73,8 @@ void DynamicControlLayer::VelocityDesiredCallback(const geometry_msgs::msg::Twis
                         msg->angular.x, msg->angular.y, msg->angular.z;
 }
 
-void DynamicControlLayer::PoseActualCallback(const auv_core_helper::msg::PoseStamped::SharedPtr msg) {
-    poseActual_ << msg->x, msg->y, msg->z, msg->roll, msg->pitch, msg->yaw;
+void DynamicControlLayer::PoseActualCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
+    poseActual_ = PoseStampedMsgToEigen(*msg);
 }
 
 void DynamicControlLayer::VelocityActualCallback(const geometry_msgs::msg::Twist::SharedPtr msg) {
@@ -194,4 +194,3 @@ auto DynamicControlLayer::GetForces(const Eigen::MatrixXd& A, const Eigen::Matri
     }
     return x;
 }
-

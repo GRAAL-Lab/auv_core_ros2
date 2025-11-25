@@ -27,7 +27,6 @@ find_library(QPOASES_LIBRARY NAMES qpOASES REQUIRED)
 
 # Generate ROS interfaces (messages and services)
 rosidl_generate_interfaces(${PROJECT_NAME}
-  "msg/PoseStamped.msg"
   "srv/ControlCommand.srv"
   DEPENDENCIES std_msgs geometry_msgs
 )

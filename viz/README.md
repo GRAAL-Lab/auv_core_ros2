@@ -46,8 +46,8 @@ The `Visualizer` node interacts with the following topics:
   - `/visualization_marker_array` ([`visualization_msgs/msg/MarkerArray`](http://docs.ros.org/en/api/visualization_msgs/html/msg/MarkerArray.html)): Publishes the planned path as a marker array.
 
 - **Subscriptions**:
-  - `/pose_actual` ([`auv_core_helper/msg/PoseStamped`](https://github.com/your_repo)): Receives the current pose of the vehicle.
-  - `/pose_goal` ([`auv_core_helper/msg/PoseStamped`](https://github.com/your_repo)): Receives the goal pose for the vehicle.
+  - `/pose_actual` ([`geometry_msgs/msg/PoseStamped`](http://docs.ros.org/en/api/geometry_msgs/html/msg/PoseStamped.html)): Receives the current pose of the vehicle.
+  - `/pose_goal` ([`geometry_msgs/msg/PoseStamped`](http://docs.ros.org/en/api/geometry_msgs/html/msg/PoseStamped.html)): Receives the goal pose for the vehicle.
   - `/planned_path` ([`nav_msgs/msg/Path`](http://docs.ros.org/en/api/nav_msgs/html/msg/Path.html)): Receives the planned path of the vehicle.
 
 ### RViz Integration

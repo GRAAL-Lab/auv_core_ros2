@@ -1,4 +1,5 @@
     #include "viz/visualizer.hpp"
+    #include "auv_core_helper/helper_lib.hpp"
     #include <Eigen/Geometry>  // Ensure Eigen is included for quaternion operations
     #include <cmath>           // For M_PI
 
@@ -34,11 +35,11 @@
         tfBroadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(this);
 
         // Create ROS 2 subscriptions
-        poseSubscription_ = this->create_subscription<auv_core_helper::msg::PoseStamped>(
+        poseSubscription_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
             auv_core_helper::topicnames::pose_actual, 1, 
             std::bind(&Visualizer::PoseCallback, this, std::placeholders::_1));
 
-        poseGoalSubscription_ = this->create_subscription<auv_core_helper::msg::PoseStamped>(
+        poseGoalSubscription_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
             auv_core_helper::topicnames::pose_goal, 1, 
             std::bind(&Visualizer::PoseGoalCallback, this, std::placeholders::_1));
 
@@ -54,29 +55,26 @@
         });
     }
 
-    void Visualizer::PoseCallback(const auv_core_helper::msg::PoseStamped::SharedPtr msg) {
+    void Visualizer::PoseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
         firstPoseReceived_ = true;
-        PublishPose(msg->x, msg->y, msg->z, msg->roll, msg->pitch, msg->yaw);
+        const Eigen::Matrix<double, 6, 1> pose = PoseStampedMsgToEigen(*msg);
+        PublishPose(pose(0), pose(1), pose(2), pose(3), pose(4), pose(5));
     }
 
-    void Visualizer::PoseGoalCallback(const auv_core_helper::msg::PoseStamped::SharedPtr msg) {
+    void Visualizer::PoseGoalCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
         geometry_msgs::msg::TransformStamped goalTransform;
         goalTransform.header.stamp = this->get_clock()->now();
-        goalTransform.header.frame_id = "world";
+        goalTransform.header.frame_id = msg->header.frame_id.empty() ? "world" : msg->header.frame_id;
         goalTransform.child_frame_id = "goal_frame";
 
-        goalTransform.transform.translation.x = msg->x;
-        goalTransform.transform.translation.y = msg->y;
-        goalTransform.transform.translation.z = msg->z;
+        goalTransform.transform.translation.x = msg->pose.position.x;
+        goalTransform.transform.translation.y = msg->pose.position.y;
+        goalTransform.transform.translation.z = msg->pose.position.z;
 
-        Eigen::Quaterniond quaternion(
-            Eigen::AngleAxisd(msg->yaw, Eigen::Vector3d::UnitZ()) *
-            Eigen::AngleAxisd(msg->pitch, Eigen::Vector3d::UnitY()) *
-            Eigen::AngleAxisd(msg->roll, Eigen::Vector3d::UnitX()));
-        goalTransform.transform.rotation.x = quaternion.x();
-        goalTransform.transform.rotation.y = quaternion.y();
-        goalTransform.transform.rotation.z = quaternion.z();
-        goalTransform.transform.rotation.w = quaternion.w();
+        goalTransform.transform.rotation.x = msg->pose.orientation.x;
+        goalTransform.transform.rotation.y = msg->pose.orientation.y;
+        goalTransform.transform.rotation.z = msg->pose.orientation.z;
+        goalTransform.transform.rotation.w = msg->pose.orientation.w;
 
         tfBroadcaster_->sendTransform(goalTransform);
     }

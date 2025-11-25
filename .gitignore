@@ -149,6 +149,8 @@ target/
 # R O S
 
 build/
+install/
+log/
 bin/
 lib/
 msg_gen/

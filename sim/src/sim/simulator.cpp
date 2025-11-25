@@ -48,7 +48,7 @@ Simulator::Simulator()
     dynamicsModel_ = std::make_unique<mvm::UnderwaterVehicleModel>(config, configNameParam);
 
     // Publishers
-    poseActualPublisher_ = this->create_publisher<auv_core_helper::msg::PoseStamped>(
+    poseActualPublisher_ = this->create_publisher<geometry_msgs::msg::PoseStamped>(
         auv_core_helper::topicnames::pose_actual, 1);
     velocityActualPublisher_ = this->create_publisher<geometry_msgs::msg::Twist>(
         auv_core_helper::topicnames::velocity_actual, 1);

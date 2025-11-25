@@ -18,7 +18,7 @@
 #include "rclcpp/rclcpp.hpp"
 
 // AUV-specific headers
-#include "auv_core_helper/msg/pose_stamped.hpp"
+#include <geometry_msgs/msg/pose_stamped.hpp>
 #include "auv_msgs_ros2/topicnames.hpp"
 #include "nav_msgs/msg/path.hpp"
 
@@ -33,8 +33,8 @@ public:
 
 private:
     // Callback functions
-    void PoseCallback(const auv_core_helper::msg::PoseStamped::SharedPtr msg);
-    void PoseGoalCallback(const auv_core_helper::msg::PoseStamped::SharedPtr msg);
+    void PoseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
+    void PoseGoalCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
     void PathCallback(const nav_msgs::msg::Path::SharedPtr msg);
 
     // Utility functions
@@ -46,8 +46,8 @@ private:
     rclcpp::TimerBase::SharedPtr timer_;
     rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr markerPublisher_;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr pathPublisher_;
-    rclcpp::Subscription<auv_core_helper::msg::PoseStamped>::SharedPtr poseSubscription_;
-    rclcpp::Subscription<auv_core_helper::msg::PoseStamped>::SharedPtr poseGoalSubscription_;
+    rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr poseSubscription_;
+    rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr poseGoalSubscription_;
     rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr pathSubscription_;
     std::unique_ptr<tf2_ros::TransformBroadcaster> tfBroadcaster_;
 
