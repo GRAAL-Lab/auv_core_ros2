@@ -47,7 +47,9 @@ ament_target_dependencies(${PROJECT_NAME}_lib
   geometry_msgs
   PkgConfig
   rosidl_default_runtime
+  ament_index_cpp
 )
+
 
 # Include directories for the helper library
 target_include_directories(${PROJECT_NAME}_lib PUBLIC

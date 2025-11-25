@@ -83,6 +83,7 @@ foreach(target simulator_node)
     auv_core_helper
     rclcpp_lifecycle
     nav_msgs
+    ament_index_cpp
   )
   target_link_libraries(${target}
     ${RML_LIBRARY}

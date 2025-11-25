@@ -78,6 +78,7 @@ foreach(target visualizer_node)
     auv_core_helper
     rclcpp_lifecycle
     nav_msgs
+    ament_index_cpp
   )
   target_link_libraries(${target}
     ${auv_core_helper_LIBRARIES}
