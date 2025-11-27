@@ -1,7 +1,7 @@
 # Visualizer package
 
 ## Overview
-The **Visualizer** node provides a real-time visualization of underwater vehicle dynamics and planned paths using RViz. It publishes 3D models, paths, and poses to facilitate debugging and demonstration of AUV simulations or real-world operations.
+The **Visualizer** node provides a real-time visualization of underwater vehicle dynamics and planned paths using RViz. It publishes 3D models, paths, and poses to facilitate debugging and demonstration of AUV simulations or real-World operations.
 
 ### Key Features
 - Visualizes vehicle pose using 3D meshes or primitive shapes.

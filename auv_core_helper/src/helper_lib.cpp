@@ -157,7 +157,7 @@ void PublishEigenPose(const rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::
                       const rclcpp::Time& time) {
     auto message = std::make_unique<geometry_msgs::msg::PoseStamped>();
     message->header.stamp = time;
-    message->header.frame_id = "world";
+    message->header.frame_id = "World";
     message->pose.position.x = pose(0);
     message->pose.position.y = pose(1);
     message->pose.position.z = pose(2);

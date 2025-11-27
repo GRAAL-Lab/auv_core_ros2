@@ -151,7 +151,7 @@ fsm::retval PathFollowingState::Execute() noexcept {
         poseGoal << firstPoint.x(), firstPoint.y(), firstPoint.z(), 0, pitchDirection, yawDirection;
         ctrlData->poseGoal = poseGoal;
 
-        // Compute errors (world frame)
+        // Compute errors (World frame)
         positionXError_ = ctrlData->poseGoal(0) - ctrlData->poseActual(0);
         positionYError_ = ctrlData->poseGoal(1) - ctrlData->poseActual(1);
         positionZError_ = ctrlData->poseGoal(2) - ctrlData->poseActual(2);
@@ -237,7 +237,7 @@ fsm::retval PathFollowingState::Execute() noexcept {
         ctrlData->poseGoal(4) = theta_psi_d; 
         ctrlData->poseGoal(5) = psi_d;
 
-        // Compute errors in world frame
+        // Compute errors in World frame
         positionXError_ = ctrlData->poseGoal(0) - ctrlData->poseActual(0);
         positionYError_ = ctrlData->poseGoal(1) - ctrlData->poseActual(1);
         positionZError_ = ctrlData->poseGoal(2) - ctrlData->poseActual(2);

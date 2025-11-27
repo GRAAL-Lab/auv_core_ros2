@@ -45,7 +45,7 @@ private:
 
     // Parameters
     double currentYVelocity_, currentZVelocity_; // Time step
-    Eigen::Matrix<double, 6, 1> currentVelocity_; // Current velocity in the world frame
+    Eigen::Matrix<double, 6, 1> currentVelocity_; // Current velocity in the World frame
     double dt_;
 
     std::string kclCurrentState_; // Default state

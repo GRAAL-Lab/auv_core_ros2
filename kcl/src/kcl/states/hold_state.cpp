@@ -44,7 +44,7 @@ fsm::retval HoldState::Execute() noexcept {
         return fsm::fail;
     }
 
-    // Calculate position and orientation errors in the world frame
+    // Calculate position and orientation errors in the World frame
     positionXError_ = ctrlData->poseGoal(0) - ctrlData->poseActual(0);
     positionYError_ = ctrlData->poseGoal(1) - ctrlData->poseActual(1);
     positionZError_ = ctrlData->poseGoal(2) - ctrlData->poseActual(2);

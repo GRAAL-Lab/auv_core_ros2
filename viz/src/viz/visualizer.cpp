@@ -48,7 +48,7 @@
             std::bind(&Visualizer::PathCallback, this, std::placeholders::_1));
 
         // Timer to publish a default pose if no data is received
-        timer_ = this->create_wall_timer(std::chrono::milliseconds(125), [this]() {
+        timer_ = this->create_wall_timer(std::chrono::milliseconds(10), [this]() {
             if (!firstPoseReceived_) {
                 PublishPose(0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
             }
@@ -64,7 +64,7 @@
     void Visualizer::PoseGoalCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
         geometry_msgs::msg::TransformStamped goalTransform;
         goalTransform.header.stamp = this->get_clock()->now();
-        goalTransform.header.frame_id = msg->header.frame_id.empty() ? "world" : msg->header.frame_id;
+        goalTransform.header.frame_id = msg->header.frame_id.empty() ? "World" : msg->header.frame_id;
         goalTransform.child_frame_id = "goal_frame";
 
         goalTransform.transform.translation.x = msg->pose.position.x;
@@ -81,7 +81,7 @@
 
     void Visualizer::PathCallback(const nav_msgs::msg::Path::SharedPtr msg) {
         visualization_msgs::msg::Marker lineStrip;
-        lineStrip.header.frame_id = "world";
+        lineStrip.header.frame_id = "World";
         lineStrip.header.stamp = this->get_clock()->now();
         lineStrip.ns = "path";
         lineStrip.id = 0;
@@ -106,7 +106,7 @@
 
     void Visualizer::PublishPose(double x, double y, double z, double roll, double pitch, double yaw) {
         visualization_msgs::msg::Marker marker;
-        marker.header.frame_id = "world";
+        marker.header.frame_id = "World";
         marker.header.stamp = this->get_clock()->now();
         marker.ns = "AUV";
         marker.id = 0;
@@ -156,7 +156,7 @@
         // Create and send the transform for the frame without modifying the orientation
         geometry_msgs::msg::TransformStamped transform;
         transform.header.stamp = this->get_clock()->now();
-        transform.header.frame_id = "world";
+        transform.header.frame_id = "World";
         transform.child_frame_id = "auv_base_link";
 
         transform.transform.translation.x = x;
@@ -172,7 +172,7 @@
 
     void Visualizer::PublishLightSource(double x, double y, double z) {
         visualization_msgs::msg::Marker lightMarker;
-        lightMarker.header.frame_id = "world";
+        lightMarker.header.frame_id = "World";
         lightMarker.header.stamp = this->get_clock()->now();
         lightMarker.ns = "light_source";
         lightMarker.id = 1;

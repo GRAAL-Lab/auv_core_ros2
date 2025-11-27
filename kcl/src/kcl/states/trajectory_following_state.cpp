@@ -32,11 +32,11 @@ fsm::retval TrajectoryFollowingState::Execute() {
         return fsm::ok;
     }
 
-    // Compute the next trajectory point velocities in world frame + Euler angle rates
+    // Compute the next trajectory point velocities in World frame + Euler angle rates
     Eigen::Matrix<double, 6, 1> velWorldEulerRates = FindNextTrajectoryPoint(poseInitial_, poseGoal_, tTotal_, tCurrent);
 
     // Separate linear and Euler angle rates
-    Eigen::Vector3d vWorld = velWorldEulerRates.head<3>();    // Linear velocities in world frame
+    Eigen::Vector3d vWorld = velWorldEulerRates.head<3>();    // Linear velocities in World frame
     Eigen::Vector3d eulerRates = velWorldEulerRates.tail<3>(); // Euler angle rates (roll_dot, pitch_dot, yaw_dot)
 
     // Get current orientation

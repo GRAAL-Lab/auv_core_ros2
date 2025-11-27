@@ -60,7 +60,7 @@ DynamicControlLayer::DynamicControlLayer()
 
     // Timer
     forceComputeTimer_ = this->create_wall_timer(
-        std::chrono::milliseconds(125), 
+        std::chrono::milliseconds(10), 
         std::bind(&DynamicControlLayer::ForceComputeCallback, this));
 }
 

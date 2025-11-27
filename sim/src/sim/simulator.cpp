@@ -10,20 +10,20 @@ Simulator::Simulator()
     this->get_parameter("config_name", configNameParam);
 
     // Declare parameters for current velocities and simulation time step
-    this->declare_parameter<double>("current_y_velocity", 0.0); // Default y-axis current velocity (world frame)
-    this->declare_parameter<double>("current_z_velocity", 0.0); // Default z-axis current velocity (world frame)
-    this->declare_parameter<double>("simulation_dt", 0.1);      // Default time step
+    this->declare_parameter<double>("current_y_velocity", 0.0); // Default y-axis current velocity (World frame)
+    this->declare_parameter<double>("current_z_velocity", 0.0); // Default z-axis current velocity (World frame)
+    this->declare_parameter<double>("simulation_dt", 0.01);      // Default time step
 
     this->get_parameter("current_y_velocity", currentYVelocity_);
     this->get_parameter("current_z_velocity", currentZVelocity_);
     this->get_parameter("simulation_dt", dt_);
 
-    std::cout << "Current y velocity (world frame): " << currentYVelocity_ << std::endl;
-    std::cout << "Current z velocity (world frame): " << currentZVelocity_ << std::endl;
+    std::cout << "Current y velocity (World frame): " << currentYVelocity_ << std::endl;
+    std::cout << "Current z velocity (World frame): " << currentZVelocity_ << std::endl;
     std::cout << "Simulation time step: " << dt_ << std::endl;
 
     // Store parameters
-    // currentVelocity_ is initially specified in world frame
+    // currentVelocity_ is initially specified in World frame
     currentVelocity_ << 0.0, currentYVelocity_, currentZVelocity_, 0.0, 0.0, 0.0;
 
     // Construct the dynamic model parameters path
@@ -69,7 +69,7 @@ Simulator::Simulator()
                                                std::bind(&Simulator::Simulate, this));
 
     // Initialize state vectors
-    // Pose in world frame (x, y, z, roll, pitch, yaw)
+    // Pose in World frame (x, y, z, roll, pitch, yaw)
     poseActual_.setZero(6);
     // Velocity in body frame (u, v, w, p, q, r)
     velocityActual_.setZero(6);
@@ -101,7 +101,7 @@ void Simulator::Simulate() {
     rml::EulerRPY rpy(poseActual_(3), poseActual_(4), poseActual_(5));
     Eigen::Matrix3d R = rpy.ToRotationMatrix().matrix();
 
-    // Convert current velocity from world frame to body frame
+    // Convert current velocity from World frame to body frame
     Eigen::Vector3d currentVelLinearWorld(currentVelocity_(0), currentVelocity_(1), currentVelocity_(2));
     Eigen::Vector3d currentVelLinearBody = R.transpose() * currentVelLinearWorld;
 
@@ -112,7 +112,7 @@ void Simulator::Simulate() {
     // velocityActual_ in body frame, so is currentVelocityBody
     Eigen::Matrix<double, 6, 1> velocityActualRel_ = velocityActual_ - currentVelocityBody;
 
-    // Update the dynamics model (pose in world frame, velocity in body frame)
+    // Update the dynamics model (pose in World frame, velocity in body frame)
     dynamicsModel_->UpdateModel(velocityActualRel_, poseActual_);
 
     // Compute acceleration in body frame
@@ -121,11 +121,11 @@ void Simulator::Simulate() {
     // Integrate velocity in body frame
     velocityActual_ += accelerationActual_ * dt_;
 
-    // Convert body-frame linear velocity to world frame for position integration
+    // Convert body-frame linear velocity to World frame for position integration
     Eigen::Vector3d vBody(velocityActual_(0), velocityActual_(1), velocityActual_(2));
     Eigen::Vector3d vWorld = R * vBody;
 
-    // Integrate position in world frame
+    // Integrate position in World frame
     poseActual_.x() += vWorld.x() * dt_;
     poseActual_.y() += vWorld.y() * dt_;
     poseActual_.z() += vWorld.z() * dt_;
