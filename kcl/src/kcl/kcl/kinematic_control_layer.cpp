@@ -23,9 +23,7 @@ KCL::KCL()
     SetupTransitions();
 
     // Create FSM timer
-    fsmTimer_ = this->create_wall_timer(
-        std::chrono::milliseconds(static_cast<int>(ctrlData_->dt * 1000)),
-        std::bind(&KCL::ExecuteFSM, this));
+    fsmTimer_ = this->create_wall_timer(std::chrono::milliseconds(static_cast<int>(ctrlData_->dt * 1000)),std::bind(&KCL::ExecuteFSM, this));
 
 
     // Create subscriptions
@@ -62,9 +60,9 @@ KCL::KCL()
 }
 
 void KCL::JoyStickCallback(const sensor_msgs::msg::Joy::SharedPtr msg) {
-    // Update joystick data in control data
     ctrlData_->joystickMsg = msg;
 }
+
 
 void KCL::PoseActualCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
     // Update actual pose in control data

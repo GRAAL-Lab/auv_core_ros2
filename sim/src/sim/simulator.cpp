@@ -161,7 +161,6 @@ void Simulator::KclStateCallback(const std_msgs::msg::String::SharedPtr msg) {
 
 void Simulator::CheckAndSetZero(Eigen::Matrix<double, 6, 1>& vec) {
     for (int i = 0; i < vec.size(); ++i) {
-        vec(i) = std::round(vec(i) * 10000.0) / 10000.0;
         if (std::abs(vec(i)) < EPSILON) {
             vec(i) = 0.0;
         }
