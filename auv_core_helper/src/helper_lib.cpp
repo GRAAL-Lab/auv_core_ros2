@@ -186,10 +186,10 @@ Eigen::Matrix<double, 6, 1> PoseStampedMsgToEigen(const geometry_msgs::msg::Pose
                             msg.pose.orientation.y,
                             msg.pose.orientation.z);
     quat.normalize();
-    Eigen::Vector3d euler = quat.toRotationMatrix().eulerAngles(0, 1, 2);
-    pose(3) = euler[0];
-    pose(4) = euler[1];
-    pose(5) = euler[2];
+    Eigen::Matrix3d R = quat.toRotationMatrix();
+    pose(3) = std::atan2(R(2,1), R(2,2));     // roll
+    pose(4) = std::asin(-R(2,0));             // pitch
+    pose(5) = std::atan2(R(1,0), R(0,0));     // yaw
     return pose;
 }
 void PublishEigenVelocity(const rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr& publisher, const Eigen::Matrix<double, 6, 1>& velocity) {

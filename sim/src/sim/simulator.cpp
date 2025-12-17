@@ -1,6 +1,6 @@
 #include "sim/simulator.hpp"
 
-constexpr double EPSILON = 0.00001; // Define a small threshold value for zero comparison
+constexpr double EPSILON = 0.0000001; // Define a small threshold value for zero comparison
 
 Simulator::Simulator()
     : Node("simulator_node"), simulationTime_(0, 0, RCL_ROS_TIME) {
@@ -13,15 +13,22 @@ Simulator::Simulator()
     this->declare_parameter<double>("current_y_velocity", 0.0); // Default y-axis current velocity (World frame)
     this->declare_parameter<double>("current_z_velocity", 0.0); // Default z-axis current velocity (World frame)
     this->declare_parameter<double>("simulation_dt", 0.01);      // Default time step
+    this->declare_parameter<double>("initial_x", 0.0);        // Default initial x position
+    this->declare_parameter<double>("initial_y", 0.0);        // Default initial y position
+    this->declare_parameter<double>("initial_z", 0.0);       // Default initial z position
 
     this->get_parameter("current_y_velocity", currentYVelocity_);
     this->get_parameter("current_z_velocity", currentZVelocity_);
     this->get_parameter("simulation_dt", dt_);
+    this->get_parameter("initial_x", initialX_);
+    this->get_parameter("initial_y", initialY_);
+    this->get_parameter("initial_z", initialZ_);
 
     std::cout << "Current y velocity (World frame): " << currentYVelocity_ << std::endl;
     std::cout << "Current z velocity (World frame): " << currentZVelocity_ << std::endl;
     std::cout << "Simulation time step: " << dt_ << std::endl;
-
+    std::cout << "Initial Position - x: " << initialX_ << ", y: " << initialY_ << ", z: " << initialZ_ << std::endl;
+    
     // Store parameters
     // currentVelocity_ is initially specified in World frame
     currentVelocity_ << 0.0, currentYVelocity_, currentZVelocity_, 0.0, 0.0, 0.0;
@@ -71,6 +78,9 @@ Simulator::Simulator()
     // Initialize state vectors
     // Pose in World frame (x, y, z, roll, pitch, yaw)
     poseActual_.setZero(6);
+    poseActual_(0) = initialX_;
+    poseActual_(1) = initialY_;
+    poseActual_(2) = initialZ_;
     // Velocity in body frame (u, v, w, p, q, r)
     velocityActual_.setZero(6);
     // Acceleration in body frame

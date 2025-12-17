@@ -47,6 +47,7 @@ private:
     double currentYVelocity_, currentZVelocity_; // Time step
     Eigen::Matrix<double, 6, 1> currentVelocity_; // Current velocity in the World frame
     double dt_;
+    double initialX_, initialY_, initialZ_; // Initial position
 
     std::string kclCurrentState_; // Default state
 
