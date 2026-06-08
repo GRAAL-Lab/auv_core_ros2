@@ -55,7 +55,7 @@ DynamicControlLayer::DynamicControlLayer()
         std::bind(&DynamicControlLayer::KclStateCallback, this, std::placeholders::_1));
 
     // Publisher
-    forcesDesiredPublisher_ = this->create_publisher<std_msgs::msg::Float64MultiArray>(auv_core_helper::topicnames::forces_desired, 1);
+    forcesDesiredPublisher_ = this->create_publisher<auv_core_helper::msg::ThrusterForces>(auv_core_helper::topicnames::forces_desired, 1);
 
     // Timer
    forceComputeTimer_ = this->create_wall_timer(
@@ -109,17 +109,22 @@ void DynamicControlLayer::ForceComputeCallback() {
     // Solve for thruster forces
     Eigen::VectorXd forces = GetForces(thrustersWrenchMatrix_, lhs_, upLowBounds_, thrusterAllocationWeights_);
 
-    // Prepare message for publishing
+    // Prepare messages for publishing
     std_msgs::msg::Float64MultiArray forceMsg;
     forceMsg.data.resize(forces.size());
+
+    auv_core_helper::msg::ThrusterForces stampedMsg;
+    stampedMsg.header.stamp = this->get_clock()->now();
+    stampedMsg.header.frame_id = "auv_base_link";
+    stampedMsg.forces.resize(forces.size());
 
     bool zero_forces = (kclCurrentState_ == "IDLE" || kclCurrentState_ == "RESET");
     for (size_t i = 0; i < static_cast<size_t>(forces.size()); ++i) {
         double value = zero_forces ? 0.0 : forces(i);
-        forceMsg.data[i] = value;
+        stampedMsg.forces[i] = value;
     }
 
-    forcesDesiredPublisher_->publish(forceMsg);
+    forcesDesiredPublisher_->publish(stampedMsg);
 }
 
 

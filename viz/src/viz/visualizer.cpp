@@ -48,7 +48,7 @@
             std::bind(&Visualizer::PathCallback, this, std::placeholders::_1));
 
         // Timer to publish a default pose if no data is received
-        timer_ = this->create_wall_timer(std::chrono::milliseconds(10), [this]() {
+        timer_ = this->create_wall_timer(std::chrono::milliseconds(30), [this]() {
             if (!firstPoseReceived_) {
                 PublishPose(0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
             }
@@ -153,21 +153,7 @@
 
         markerPublisher_->publish(marker);
 
-        // Create and send the transform for the frame without modifying the orientation
-        geometry_msgs::msg::TransformStamped transform;
-        transform.header.stamp = this->get_clock()->now();
-        transform.header.frame_id = "World";
-        transform.child_frame_id = "auv_base_link";
-
-        transform.transform.translation.x = x;
-        transform.transform.translation.y = y;
-        transform.transform.translation.z = z;
-        transform.transform.rotation.x = original_quaternion.x();
-        transform.transform.rotation.y = original_quaternion.y();
-        transform.transform.rotation.z = original_quaternion.z();
-        transform.transform.rotation.w = original_quaternion.w();
-
-        tfBroadcaster_->sendTransform(transform);
+        // TF for the body frame is published by the simulator.
     }
 
     void Visualizer::PublishLightSource(double x, double y, double z) {

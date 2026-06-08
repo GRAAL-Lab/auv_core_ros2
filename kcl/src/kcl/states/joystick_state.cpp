@@ -53,21 +53,23 @@ fsm::retval JoystickState::Execute() noexcept
     ctrlData->velocityDesired[2] =std::clamp(ctrlData->velocityDesired[2],ctrlData->minVelocity[2],ctrlData->maxVelocity[2]);
 
     // --------------------------------------------------
-    // ROLL
+    // PITCH (controlled by bottom triggers/buttons)
     // --------------------------------------------------
     double rt_norm = (1.0 - ctrlData->joystickMsg->axes[AXIS_ROLL_RIGHT]) * 0.5;
     double lt_norm = (1.0 - ctrlData->joystickMsg->axes[AXIS_ROLL_LEFT])  * 0.5;
-    double roll_norm = rt_norm - lt_norm;   // -1 .. +1
-    ctrlData->velocityDesired[3] =map(roll_norm, -1.0, 1.0, ctrlData->minVelocity[3], ctrlData->maxVelocity[3]);
-    ctrlData->velocityDesired[3] =std::clamp(ctrlData->velocityDesired[3],ctrlData->minVelocity[3],ctrlData->maxVelocity[3]);
-    
-    // --------------------------------------------------
-    // PITCH 
-    // --------------------------------------------------
-    // ctrlData->joystickMsg->axes[AXIS_PITCH] = (1.0 - ctrlData->joystickMsg->axes[AXIS_PITCH]) * 0.5;
-    // ctrlData->velocityDesired[4] = map(ctrlData->joystickMsg->axes[AXIS_PITCH], -1.0, 1.0, ctrlData->minVelocity[4], ctrlData->maxVelocity[4]);
-    // ctrlData->velocityDesired[4] = std::clamp(ctrlData->velocityDesired[4], ctrlData->minVelocity[4], ctrlData->maxVelocity[4]);
+    double pitch_norm = rt_norm - lt_norm;   // -1 .. +1
 
+    ctrlData->velocityDesired[4] = map(
+        pitch_norm, -1.0, 1.0,
+        ctrlData->minVelocity[4], ctrlData->maxVelocity[4]
+    );
+    ctrlData->velocityDesired[4] = std::clamp(
+        ctrlData->velocityDesired[4],
+        ctrlData->minVelocity[4], ctrlData->maxVelocity[4]
+    );
+
+    // Optional: if you want to disable roll entirely while in joystick mode:
+    ctrlData->velocityDesired[3] = 0.0;
     // --------------------------------------------------
     // YAW (heading) axis 3
     // --------------------------------------------------

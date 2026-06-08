@@ -1,5 +1,8 @@
 #include "sim/simulator.hpp"
 
+#include <geometry_msgs/msg/transform_stamped.hpp>
+#include <Eigen/Geometry>
+
 constexpr double EPSILON = 0.0000001; // Define a small threshold value for zero comparison
 
 Simulator::Simulator()
@@ -16,6 +19,8 @@ Simulator::Simulator()
     this->declare_parameter<double>("initial_x", 0.0);        // Default initial x position
     this->declare_parameter<double>("initial_y", 0.0);        // Default initial y position
     this->declare_parameter<double>("initial_z", 0.0);       // Default initial z position
+    this->declare_parameter<std::string>("world_frame_id", worldFrameId_);
+    this->declare_parameter<std::string>("base_frame_id", baseFrameId_);
 
     this->get_parameter("current_y_velocity", currentYVelocity_);
     this->get_parameter("current_z_velocity", currentZVelocity_);
@@ -23,6 +28,8 @@ Simulator::Simulator()
     this->get_parameter("initial_x", initialX_);
     this->get_parameter("initial_y", initialY_);
     this->get_parameter("initial_z", initialZ_);
+    this->get_parameter("world_frame_id", worldFrameId_);
+    this->get_parameter("base_frame_id", baseFrameId_);
 
     std::cout << "Current y velocity (World frame): " << currentYVelocity_ << std::endl;
     std::cout << "Current z velocity (World frame): " << currentZVelocity_ << std::endl;
@@ -61,6 +68,7 @@ Simulator::Simulator()
         auv_core_helper::topicnames::velocity_actual, 1);
     accelerationActualPublisher_ = this->create_publisher<geometry_msgs::msg::Twist>(
         auv_core_helper::topicnames::acceleration_actual, 1);
+    tfBroadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(this);
 
     // Subscriptions
     forcesDesiredSubscription_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
@@ -95,7 +103,7 @@ Simulator::Simulator()
 void Simulator::ForcesDesiredCallback(const std_msgs::msg::Float64MultiArray::SharedPtr msg) {
     // Ensure that the size matches the number of thrusters
     if (msg->data.size() != dynamicsModel_->GetNumThrusters()) {
-    RCLCPP_ERROR(this->get_logger(), "ForcesDesiredCallback: Received forces vector of size %zu, expected %zu", msg->data.size(), dynamicsModel_->GetNumThrusters());
+        RCLCPP_ERROR(this->get_logger(), "ForcesDesiredCallback: Received forces vector of size %zu, expected %zu", msg->data.size(), dynamicsModel_->GetNumThrusters());
         return;
     }
     forcesDesired_.resize(msg->data.size());
@@ -157,10 +165,31 @@ void Simulator::Simulate() {
         simulationTime_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
     }
 
-    CheckAndSetZero(poseActual_);
-    CheckAndSetZero(velocityActual_);
-    CheckAndSetZero(accelerationActual_);
-    PublishEigenPose(poseActualPublisher_, poseActual_, simulationTime_);
+    // CheckAndSetZero(poseActual_);
+    // CheckAndSetZero(velocityActual_);
+    // CheckAndSetZero(accelerationActual_);
+    const rclcpp::Time stamp = this->get_clock()->now();
+    {
+        geometry_msgs::msg::TransformStamped transform;
+        transform.header.stamp = stamp;
+        transform.header.frame_id = worldFrameId_;
+        transform.child_frame_id = baseFrameId_;
+        transform.transform.translation.x = poseActual_(0);
+        transform.transform.translation.y = poseActual_(1);
+        transform.transform.translation.z = poseActual_(2);
+
+        Eigen::Quaterniond q(
+            Eigen::AngleAxisd(poseActual_(5), Eigen::Vector3d::UnitZ()) *
+            Eigen::AngleAxisd(poseActual_(4), Eigen::Vector3d::UnitY()) *
+            Eigen::AngleAxisd(poseActual_(3), Eigen::Vector3d::UnitX()));
+        q.normalize();
+        transform.transform.rotation.w = q.w();
+        transform.transform.rotation.x = q.x();
+        transform.transform.rotation.y = q.y();
+        transform.transform.rotation.z = q.z();
+        tfBroadcaster_->sendTransform(transform);
+    }
+    PublishEigenPose(poseActualPublisher_, poseActual_, stamp);
     PublishEigenVelocity(velocityActualPublisher_, velocityActual_);
     PublishEigenAcceleration(accelerationActualPublisher_, accelerationActual_);
 }

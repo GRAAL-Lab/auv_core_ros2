@@ -5,7 +5,8 @@
 #include <Eigen/Dense>
 #include "geometry_msgs/msg/twist.hpp"
 #include "std_msgs/msg/string.hpp"
-#include "std_msgs/msg/float64_multi_array.hpp"
+#include "auv_core_helper/msg/thruster_forces.hpp"
+
 // AUV-specific headers
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <tf2_ros/transform_broadcaster.h>
@@ -26,7 +27,7 @@ public:
 
 private:
     // Callback functions
-    void ForcesDesiredCallback(const std_msgs::msg::Float64MultiArray::SharedPtr msg);
+    void ForcesDesiredCallback(const auv_core_helper::msg::ThrusterForces::SharedPtr msg);
     void Simulate();
     void KclStateCallback(const std_msgs::msg::String::SharedPtr msg);
 
@@ -59,7 +60,7 @@ private:
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr accelerationActualPublisher_;
     std::unique_ptr<tf2_ros::TransformBroadcaster> tfBroadcaster_;
 
-    rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr forcesDesiredSubscription_;
+    rclcpp::Subscription<auv_core_helper::msg::ThrusterForces>::SharedPtr forcesDesiredSubscription_;
     rclcpp::TimerBase::SharedPtr simulationTimer_;
     rclcpp::Time simulationTime_;  // Simulation time tracker
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr kclStateSubscription_;

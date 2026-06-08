@@ -17,16 +17,16 @@ InterfaceNode::InterfaceNode()
     serpentinePolygonVertices_[0].y = 0;
     serpentinePolygonVertices_[0].z = 0;
 
-    serpentinePolygonVertices_[1].x = 50;
+    serpentinePolygonVertices_[1].x = 18;
     serpentinePolygonVertices_[1].y = 0;
     serpentinePolygonVertices_[1].z = 0;
 
-    serpentinePolygonVertices_[2].x = 50;
-    serpentinePolygonVertices_[2].y = 20;
+    serpentinePolygonVertices_[2].x = 18;
+    serpentinePolygonVertices_[2].y = 40;
     serpentinePolygonVertices_[2].z = 0;
 
     serpentinePolygonVertices_[3].x = 0;
-    serpentinePolygonVertices_[3].y = 20;
+    serpentinePolygonVertices_[3].y = 40;
     serpentinePolygonVertices_[3].z = 0;
 
     helixStartPosition_.x = 0;
