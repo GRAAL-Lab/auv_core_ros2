@@ -158,6 +158,7 @@ void KCL::SetupTransitions() {
     // Create states
     idleState_ = std::make_unique<IdleState>(&fsm_);
     holdState_ = std::make_unique<HoldState>(&fsm_);
+    returnHomeState_ = std::make_unique<ReturnHomeState>(&fsm_);
     joystickState_ = std::make_unique<JoystickState>(&fsm_);
     trajectoryFollowingState_ = std::make_unique<TrajectoryFollowingState>(&fsm_);
     pathFollowingState_ = std::make_unique<PathFollowingState>(&fsm_);
@@ -165,6 +166,7 @@ void KCL::SetupTransitions() {
     // Share control data with states
     idleState_->ctrlData = ctrlData_;
     holdState_->ctrlData = ctrlData_;
+    returnHomeState_->ctrlData = ctrlData_;
     joystickState_->ctrlData = ctrlData_;
     trajectoryFollowingState_->ctrlData = ctrlData_;
     pathFollowingState_->ctrlData = ctrlData_;
@@ -172,29 +174,40 @@ void KCL::SetupTransitions() {
     // Add states and enable transitions
     fsm_.AddState(States::IDLE, idleState_.get());
     fsm_.AddState(States::HOLD, holdState_.get());
+    fsm_.AddState(States::RETURN_HOME, returnHomeState_.get());
     fsm_.AddState(States::JOYSTICK, joystickState_.get());
     fsm_.AddState(States::TRAJECTORY_FOLLOWING, trajectoryFollowingState_.get());
     fsm_.AddState(States::PATH_FOLLOWING, pathFollowingState_.get());
 
     // Enable transitions
     fsm_.EnableTransition(States::IDLE, States::HOLD, true);
+    fsm_.EnableTransition(States::IDLE, States::RETURN_HOME, true);
     fsm_.EnableTransition(States::IDLE, States::JOYSTICK, true);
     fsm_.EnableTransition(States::IDLE, States::TRAJECTORY_FOLLOWING, true);
     fsm_.EnableTransition(States::IDLE, States::PATH_FOLLOWING, true);
     fsm_.EnableTransition(States::HOLD, States::IDLE, true);
+    fsm_.EnableTransition(States::HOLD, States::RETURN_HOME, true);
     fsm_.EnableTransition(States::HOLD, States::JOYSTICK, true);
     fsm_.EnableTransition(States::HOLD, States::TRAJECTORY_FOLLOWING, true);
     fsm_.EnableTransition(States::HOLD, States::PATH_FOLLOWING, true);
+    fsm_.EnableTransition(States::RETURN_HOME, States::IDLE, true);
+    fsm_.EnableTransition(States::RETURN_HOME, States::HOLD, true);
+    fsm_.EnableTransition(States::RETURN_HOME, States::JOYSTICK, true);
+    fsm_.EnableTransition(States::RETURN_HOME, States::TRAJECTORY_FOLLOWING, true);
+    fsm_.EnableTransition(States::RETURN_HOME, States::PATH_FOLLOWING, true);
     fsm_.EnableTransition(States::JOYSTICK, States::IDLE, true);
     fsm_.EnableTransition(States::JOYSTICK, States::HOLD, true);
+    fsm_.EnableTransition(States::JOYSTICK, States::RETURN_HOME, true);
     fsm_.EnableTransition(States::JOYSTICK, States::TRAJECTORY_FOLLOWING, true);
     fsm_.EnableTransition(States::JOYSTICK, States::PATH_FOLLOWING, true);
     fsm_.EnableTransition(States::TRAJECTORY_FOLLOWING, States::IDLE, true);
     fsm_.EnableTransition(States::TRAJECTORY_FOLLOWING, States::HOLD, true);
+    fsm_.EnableTransition(States::TRAJECTORY_FOLLOWING, States::RETURN_HOME, true);
     fsm_.EnableTransition(States::TRAJECTORY_FOLLOWING, States::JOYSTICK, true);
     fsm_.EnableTransition(States::TRAJECTORY_FOLLOWING, States::PATH_FOLLOWING, true);
     fsm_.EnableTransition(States::PATH_FOLLOWING, States::IDLE, true);
     fsm_.EnableTransition(States::PATH_FOLLOWING, States::HOLD, true);
+    fsm_.EnableTransition(States::PATH_FOLLOWING, States::RETURN_HOME, true);
     fsm_.EnableTransition(States::PATH_FOLLOWING, States::JOYSTICK, true);
     fsm_.EnableTransition(States::PATH_FOLLOWING, States::TRAJECTORY_FOLLOWING, true);
     fsm_.SetInitState(States::HOLD);

@@ -72,6 +72,7 @@ add_library(states_lib STATIC
   src/kcl/states/trajectory_following_state.cpp
   src/kcl/states/path_following_state.cpp
   src/kcl/states/hold_state.cpp
+  src/kcl/states/return_home_state.cpp
 )
 target_include_directories(states_lib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -110,6 +111,7 @@ add_executable(kinematic_control_layer_node
     src/kcl/states/trajectory_following_state.cpp
     src/kcl/states/path_following_state.cpp
     src/kcl/states/hold_state.cpp
+    src/kcl/states/return_home_state.cpp
     src/kcl/kcl/kinematic_control_layer.cpp
 )
 add_executable(interface_node

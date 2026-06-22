@@ -165,7 +165,7 @@ auto DynamicControlLayer::GetForces(const Eigen::MatrixXd& A, const Eigen::Matri
         double lambdaTW = 1e-2;
         double prodTW;
         int flagTW;
-        rml::GT_RegPinv(thrustersWrenchMatrixData, rows, cols, TWPInv, thresholdTW, lambdaTW, &prodTW, &flagTW);
+        rml::RegPinv(thrustersWrenchMatrixData, rows, cols, TWPInv, thresholdTW, lambdaTW, &prodTW, &flagTW);
         Eigen::Map<Eigen::MatrixXd> TWPInvMatrix(TWPInv, cols, rows);
         x = TWPInvMatrix * b;
         delete[] TWPInv;

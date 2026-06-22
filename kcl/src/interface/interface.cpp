@@ -57,9 +57,10 @@ void InterfaceNode::StartUserInputThread() {
             std::cout << "PLEASE CHOOSE NEXT STATE:" << std::endl;
             std::cout << "1. IDLE" << std::endl;
             std::cout << "2. HOLD" << std::endl;
-            std::cout << "3. JoyStick Control" << std::endl;
-            std::cout << "4. Trajectory Following" << std::endl;
-            std::cout << "5. Path Following" << std::endl;
+            std::cout << "3. Return Home" << std::endl;
+            std::cout << "4. JoyStick Control" << std::endl;
+            std::cout << "5. Trajectory Following" << std::endl;
+            std::cout << "6. Path Following" << std::endl;
             std::cout << "Enter choice: ";
         }
 
@@ -228,9 +229,10 @@ std::string InterfaceNode::GetStateByNumber(int number) const {
     switch (number) {
     case 1: return States::IDLE;
     case 2: return States::HOLD;
-    case 3: return States::JOYSTICK;
-    case 4: return States::TRAJECTORY_FOLLOWING;
-    case 5: return States::PATH_FOLLOWING;
+    case 3: return States::RETURN_HOME;
+    case 4: return States::JOYSTICK;
+    case 5: return States::TRAJECTORY_FOLLOWING;
+    case 6: return States::PATH_FOLLOWING;
     default: return "";
     }
 }
@@ -362,4 +364,3 @@ void InterfaceNode::SendPathRequest() {
             }
         });
 }
-

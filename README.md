@@ -17,6 +17,7 @@ The following figure illustrates the software architecture of the package:
    - KCL stands for Kinematic Control Layer. It consists of a Finite State Machine (FSM) controlled by the interface node through a service. It currently supports the following states:
      - **IDLE**: Sets desired velocities to zero.
      - **HOLD**: Maintains the AUV’s position using a PID controller.
+     - **RETURN_HOME**: Drives the AUV to the home pose `[0, 0, 0, 0, 0, 0]` using PID pose control.
      - **JOYSTICK**: Maps joystick input directly to desired velocities.
      - **TRAJECTORY_FOLLOWING**: Allows setting a waypoint and a time to reach the goal. The AUV follows a path based on a 5th-degree polynomial function for its pose, deriving velocities and accelerations.
      - **PATH_FOLLOWING**: In this mode, the AUV follows predefined paths generated using various path-planning algorithms such as Helix3D, Serpentine2D, and Serpentine3D. Upon entering this state, the system selects the appropriate path based on user-defined parameters, initializes PID controllers, and computes the AUV’s desired velocity and orientation. It adjusts dynamically to ensure the vehicle aligns with the path direction and follows it accurately, updating parameters like cross-track and vertical errors to maintain optimal performance. The process concludes once the path is completed or interrupted.

@@ -21,6 +21,7 @@
 #include "states/base_auv_state.hpp"
 #include "states/idle_state.hpp"
 #include "states/hold_state.hpp"
+#include "states/return_home_state.hpp"
 #include "states/joystick_state.hpp"
 #include "states/trajectory_following_state.hpp"
 #include "states/path_following_state.hpp"
@@ -49,6 +50,7 @@ private:
     // State objects
     std::unique_ptr<IdleState> idleState_;
     std::unique_ptr<HoldState> holdState_;
+    std::unique_ptr<ReturnHomeState> returnHomeState_;
     std::unique_ptr<JoystickState> joystickState_;
     std::unique_ptr<TrajectoryFollowingState> trajectoryFollowingState_;
     std::unique_ptr<PathFollowingState> pathFollowingState_;

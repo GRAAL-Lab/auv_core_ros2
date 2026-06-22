@@ -1,5 +1,5 @@
 # Request part of the service
-string state         # State to set; can be IDLE, JOYSTICK, TRAJECTORY_PLANNING, HOLD, PATH_PLANNING
+string state         # State to set; can be IDLE, HOLD, RETURN_HOME, JOYSTICK, TRAJECTORY_FOLLOWING, PATH_FOLLOWING
 float64 x            # x-coordinate for TRAJECTORY_PLANNING
 float64 y            # y-coordinate for TRAJECTORY_PLANNING
 float64 z            # z-coordinate for TRAJECTORY_PLANNING
