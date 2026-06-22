@@ -152,17 +152,45 @@ void LoadParamsFromConf(const std::string& config_name, Eigen::VectorXd* thruste
 
 
 
-void PublishEigenPose(const rclcpp::Publisher<auv_core_helper::msg::PoseStamped>::SharedPtr& publisher, const Eigen::Matrix<double, 6, 1>& pose, const rclcpp::Time& time) {
-    auto message = std::make_unique<auv_core_helper::msg::PoseStamped>();
+void PublishEigenPose(const rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr& publisher,
+                      const Eigen::Matrix<double, 6, 1>& pose,
+                      const rclcpp::Time& time) {
+    auto message = std::make_unique<geometry_msgs::msg::PoseStamped>();
     message->header.stamp = time;
-    message->x = pose(0);
-    message->y = pose(1);
-    message->z = pose(2);
-    message->roll = pose(3);
-    message->pitch = pose(4);
-    message->yaw = pose(5);
+    message->header.frame_id = "World";
+    message->pose.position.x = pose(0);
+    message->pose.position.y = pose(1);
+    message->pose.position.z = pose(2);
+
+    Eigen::Quaterniond orientation =
+        Eigen::AngleAxisd(pose(5), Eigen::Vector3d::UnitZ()) *
+        Eigen::AngleAxisd(pose(4), Eigen::Vector3d::UnitY()) *
+        Eigen::AngleAxisd(pose(3), Eigen::Vector3d::UnitX());
+    orientation.normalize();
+    message->pose.orientation.x = orientation.x();
+    message->pose.orientation.y = orientation.y();
+    message->pose.orientation.z = orientation.z();
+    message->pose.orientation.w = orientation.w();
 
     publisher->publish(std::move(message));
+}
+
+Eigen::Matrix<double, 6, 1> PoseStampedMsgToEigen(const geometry_msgs::msg::PoseStamped& msg) {
+    Eigen::Matrix<double, 6, 1> pose;
+    pose(0) = msg.pose.position.x;
+    pose(1) = msg.pose.position.y;
+    pose(2) = msg.pose.position.z;
+
+    Eigen::Quaterniond quat(msg.pose.orientation.w,
+                            msg.pose.orientation.x,
+                            msg.pose.orientation.y,
+                            msg.pose.orientation.z);
+    quat.normalize();
+    Eigen::Matrix3d R = quat.toRotationMatrix();
+    pose(3) = std::atan2(R(2,1), R(2,2));     // roll
+    pose(4) = std::asin(-R(2,0));             // pitch
+    pose(5) = std::atan2(R(1,0), R(0,0));     // yaw
+    return pose;
 }
 void PublishEigenVelocity(const rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr& publisher, const Eigen::Matrix<double, 6, 1>& velocity) {
     auto message = std::make_unique<geometry_msgs::msg::Twist>();

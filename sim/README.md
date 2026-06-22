@@ -39,14 +39,14 @@ ros2 run sim simulator_node --ros-args -p config_name:=x300 -p params_file:=sim/
 ### Parameters
 The simulator node supports the following configurable parameters:
 - `config_name`: Name of the configuration file for dynamics model parameters.
-- `current_y_velocity`: Y-axis current velocity in the world frame.
-- `current_z_velocity`: Z-axis current velocity in the world frame.
+- `current_y_velocity`: Y-axis current velocity in the World frame.
+- `current_z_velocity`: Z-axis current velocity in the World frame.
 - `simulation_dt`: Simulation time step.
 
 ### Topics
 The `Simulator` node interacts with the following topics:
 - **Publishers**:
-  - `/pose_actual` ([`auv_core_helper/msg/PoseStamped`](https://github.com/your_repo)): Current pose of the vehicle.
+  - `/pose_actual` ([`geometry_msgs/msg/PoseStamped`](http://docs.ros.org/en/api/geometry_msgs/html/msg/PoseStamped.html)): Current pose of the vehicle.
   - `/velocity_actual` ([`geometry_msgs/msg/Twist`](http://docs.ros.org/en/api/geometry_msgs/html/msg/Twist.html)): Current velocity in the body frame.
   - `/acceleration_actual` ([`geometry_msgs/msg/Twist`](http://docs.ros.org/en/api/geometry_msgs/html/msg/Twist.html)): Current acceleration in the body frame.
 

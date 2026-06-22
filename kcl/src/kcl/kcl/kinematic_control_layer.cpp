@@ -23,15 +23,13 @@ KCL::KCL()
     SetupTransitions();
 
     // Create FSM timer
-    fsmTimer_ = this->create_wall_timer(
-        std::chrono::milliseconds(static_cast<int>(ctrlData_->dt * 1000)),
-        std::bind(&KCL::ExecuteFSM, this));
+    fsmTimer_ = this->create_wall_timer(std::chrono::milliseconds(static_cast<int>(ctrlData_->dt * 1000)),std::bind(&KCL::ExecuteFSM, this));
 
 
     // Create subscriptions
     joystickSubscription_ = this->create_subscription<sensor_msgs::msg::Joy>("/joy", 1, std::bind(&KCL::JoyStickCallback, this, std::placeholders::_1));
 
-    poseActualSubscription_ = this->create_subscription<auv_core_helper::msg::PoseStamped>(
+    poseActualSubscription_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
         auv_core_helper::topicnames::pose_actual, 1,
         std::bind(&KCL::PoseActualCallback, this, std::placeholders::_1));
 
@@ -44,7 +42,7 @@ KCL::KCL()
         std::bind(&KCL::AccelerationActualCallback, this, std::placeholders::_1));
 
     // Create publishers
-    poseGoalPublisher_ = this->create_publisher<auv_core_helper::msg::PoseStamped>(
+    poseGoalPublisher_ = this->create_publisher<geometry_msgs::msg::PoseStamped>(
         auv_core_helper::topicnames::pose_goal, 1);
 
     velocityDesiredPublisher_ = this->create_publisher<geometry_msgs::msg::Twist>(
@@ -62,13 +60,13 @@ KCL::KCL()
 }
 
 void KCL::JoyStickCallback(const sensor_msgs::msg::Joy::SharedPtr msg) {
-    // Update joystick data in control data
     ctrlData_->joystickMsg = msg;
 }
 
-void KCL::PoseActualCallback(const auv_core_helper::msg::PoseStamped::SharedPtr msg) {
+
+void KCL::PoseActualCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
     // Update actual pose in control data
-    ctrlData_->poseActual << msg->x, msg->y, msg->z, msg->roll, msg->pitch, msg->yaw;
+    ctrlData_->poseActual = PoseStampedMsgToEigen(*msg);
     ctrlData_->timeActual = msg->header.stamp;
 }
 

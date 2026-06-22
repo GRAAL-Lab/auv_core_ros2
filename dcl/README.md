@@ -56,9 +56,9 @@ The `Dynamic Control Layer` node interacts with the following topics:
   - `/forces_desired` ([`std_msgs/msg/Float64MultiArray`](http://docs.ros.org/en/api/std_msgs/html/msg/Float64MultiArray.html)): Publishes the computed thruster forces.
 
 - **Subscriptions**:
-  - `/pose_desired` ([`auv_core_helper/msg/PoseStamped`](https://github.com/your_repo)): Receives the desired pose of the vehicle.
+  - `/pose_desired` ([`geometry_msgs/msg/PoseStamped`](http://docs.ros.org/en/api/geometry_msgs/html/msg/PoseStamped.html)): Receives the desired pose of the vehicle.
   - `/velocity_desired` ([`geometry_msgs/msg/Twist`](http://docs.ros.org/en/api/geometry_msgs/html/msg/Twist.html)): Receives the desired velocity of the vehicle.
-  - `/pose_actual` ([`auv_core_helper/msg/PoseStamped`](https://github.com/your_repo)): Receives the actual pose of the vehicle.
+  - `/pose_actual` ([`geometry_msgs/msg/PoseStamped`](http://docs.ros.org/en/api/geometry_msgs/html/msg/PoseStamped.html)): Receives the actual pose of the vehicle.
   - `/velocity_actual` ([`geometry_msgs/msg/Twist`](http://docs.ros.org/en/api/geometry_msgs/html/msg/Twist.html)): Receives the actual velocity of the vehicle.
   - `/kcl_state` ([`std_msgs/msg/String`](http://docs.ros.org/en/api/std_msgs/html/msg/String.html)): Receives the current state of the vehicle.
 

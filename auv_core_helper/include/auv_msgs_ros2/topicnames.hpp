@@ -17,7 +17,8 @@ const std::string velocity_actual = "/auv/velocity_actual";
 const std::string acceleration_actual = "/auv/acceleration_actual";
 const std::string kcl_state = "/auv/kcl_state";
 const std::string forces_desired = "/auv/forces_desired";
-const std::string forces_desired_backseated = "/auv/forces_desired_backseated";
+// SENSORS
+const std::string imu = "/auv/imu";
 
 // SERVICES
 const std::string control_cmd_service = "/auv/service/control_cmd";

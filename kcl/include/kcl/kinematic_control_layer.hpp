@@ -8,13 +8,13 @@
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/joy.hpp>
 #include <geometry_msgs/msg/twist.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
 #include <std_msgs/msg/string.hpp>
 #include <nav_msgs/msg/path.hpp>
 
 // AUV-specific headers
 #include "kcl/data_structs.hpp"
 #include "auv_core_helper/srv/control_command.hpp"
-#include "auv_core_helper/msg/pose_stamped.hpp"
 #include "auv_core_helper/helper_lib.hpp"
 
 // State headers
@@ -58,7 +58,7 @@ private:
     // --------------------
     // ROS 2 Publishers
     // --------------------
-    rclcpp::Publisher<auv_core_helper::msg::PoseStamped>::SharedPtr poseGoalPublisher_;
+    rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr poseGoalPublisher_;
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr velocityDesiredPublisher_;
     rclcpp::Publisher<std_msgs::msg::String>::SharedPtr statePublisher_;
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr pathPublisher_;
@@ -67,7 +67,7 @@ private:
     // ROS 2 Subscriptions
     // --------------------
     rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joystickSubscription_;
-    rclcpp::Subscription<auv_core_helper::msg::PoseStamped>::SharedPtr poseActualSubscription_;
+    rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr poseActualSubscription_;
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr velocityActualSubscription_;
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr accelerationActualSubscription_;
 
@@ -99,7 +99,7 @@ private:
     void JoyStickCallback(const sensor_msgs::msg::Joy::SharedPtr msg);
     
     /// Callback for actual pose data.
-    void PoseActualCallback(const auv_core_helper::msg::PoseStamped::SharedPtr msg);
+    void PoseActualCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
     
     /// Callback for actual velocity data.
     void VelocityActualCallback(const geometry_msgs::msg::Twist::SharedPtr msg);

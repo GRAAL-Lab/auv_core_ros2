@@ -110,25 +110,6 @@ def generate_launch_description():
         ),
 
         # --------------------------------------------------
-        # Simulator Node (SIM params)
-        # --------------------------------------------------
-        TimerAction(
-            period=1.0,
-            actions=[
-                Node(
-                    package='sim',
-                    executable='simulator_node',
-                    name='simulator',
-                    output='screen',
-                    parameters=[
-                        sim_params_file,
-                        {'config_name': config_name}
-                    ]
-                )
-            ]
-        ),
-
-        # --------------------------------------------------
         # Visualizer Node (SIM params)
         # --------------------------------------------------
         TimerAction(

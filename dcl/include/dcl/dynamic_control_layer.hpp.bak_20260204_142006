@@ -6,6 +6,7 @@
 #include "geometry_msgs/msg/twist.hpp"
 #include "std_msgs/msg/float64_multi_array.hpp"
 #include "std_msgs/msg/string.hpp"
+#include "auv_core_helper/msg/thruster_forces.hpp"
 
 // AUV-specific headers
 #include <geometry_msgs/msg/pose_stamped.hpp>
@@ -100,6 +101,6 @@ private:
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr velocityActualSubscriber_;
 
     rclcpp::TimerBase::SharedPtr forceComputeTimer_;
-    rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr forcesDesiredPublisher_;
+    rclcpp::Publisher<auv_core_helper::msg::ThrusterForces>::SharedPtr forcesDesiredPublisher_;
     rclcpp::Subscription<std_msgs::msg::String>::SharedPtr kclStateSubscription_;
 };

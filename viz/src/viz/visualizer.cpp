@@ -1,4 +1,5 @@
     #include "viz/visualizer.hpp"
+    #include "auv_core_helper/helper_lib.hpp"
     #include <Eigen/Geometry>  // Ensure Eigen is included for quaternion operations
     #include <cmath>           // For M_PI
 
@@ -34,11 +35,11 @@
         tfBroadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(this);
 
         // Create ROS 2 subscriptions
-        poseSubscription_ = this->create_subscription<auv_core_helper::msg::PoseStamped>(
+        poseSubscription_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
             auv_core_helper::topicnames::pose_actual, 1, 
             std::bind(&Visualizer::PoseCallback, this, std::placeholders::_1));
 
-        poseGoalSubscription_ = this->create_subscription<auv_core_helper::msg::PoseStamped>(
+        poseGoalSubscription_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
             auv_core_helper::topicnames::pose_goal, 1, 
             std::bind(&Visualizer::PoseGoalCallback, this, std::placeholders::_1));
 
@@ -47,43 +48,40 @@
             std::bind(&Visualizer::PathCallback, this, std::placeholders::_1));
 
         // Timer to publish a default pose if no data is received
-        timer_ = this->create_wall_timer(std::chrono::milliseconds(125), [this]() {
+        timer_ = this->create_wall_timer(std::chrono::milliseconds(30), [this]() {
             if (!firstPoseReceived_) {
                 PublishPose(0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
             }
         });
     }
 
-    void Visualizer::PoseCallback(const auv_core_helper::msg::PoseStamped::SharedPtr msg) {
+    void Visualizer::PoseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
         firstPoseReceived_ = true;
-        PublishPose(msg->x, msg->y, msg->z, msg->roll, msg->pitch, msg->yaw);
+        const Eigen::Matrix<double, 6, 1> pose = PoseStampedMsgToEigen(*msg);
+        PublishPose(pose(0), pose(1), pose(2), pose(3), pose(4), pose(5));
     }
 
-    void Visualizer::PoseGoalCallback(const auv_core_helper::msg::PoseStamped::SharedPtr msg) {
+    void Visualizer::PoseGoalCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
         geometry_msgs::msg::TransformStamped goalTransform;
         goalTransform.header.stamp = this->get_clock()->now();
-        goalTransform.header.frame_id = "world";
+        goalTransform.header.frame_id = msg->header.frame_id.empty() ? "World" : msg->header.frame_id;
         goalTransform.child_frame_id = "goal_frame";
 
-        goalTransform.transform.translation.x = msg->x;
-        goalTransform.transform.translation.y = msg->y;
-        goalTransform.transform.translation.z = msg->z;
+        goalTransform.transform.translation.x = msg->pose.position.x;
+        goalTransform.transform.translation.y = msg->pose.position.y;
+        goalTransform.transform.translation.z = msg->pose.position.z;
 
-        Eigen::Quaterniond quaternion(
-            Eigen::AngleAxisd(msg->yaw, Eigen::Vector3d::UnitZ()) *
-            Eigen::AngleAxisd(msg->pitch, Eigen::Vector3d::UnitY()) *
-            Eigen::AngleAxisd(msg->roll, Eigen::Vector3d::UnitX()));
-        goalTransform.transform.rotation.x = quaternion.x();
-        goalTransform.transform.rotation.y = quaternion.y();
-        goalTransform.transform.rotation.z = quaternion.z();
-        goalTransform.transform.rotation.w = quaternion.w();
+        goalTransform.transform.rotation.x = msg->pose.orientation.x;
+        goalTransform.transform.rotation.y = msg->pose.orientation.y;
+        goalTransform.transform.rotation.z = msg->pose.orientation.z;
+        goalTransform.transform.rotation.w = msg->pose.orientation.w;
 
         tfBroadcaster_->sendTransform(goalTransform);
     }
 
     void Visualizer::PathCallback(const nav_msgs::msg::Path::SharedPtr msg) {
         visualization_msgs::msg::Marker lineStrip;
-        lineStrip.header.frame_id = "world";
+        lineStrip.header.frame_id = "World";
         lineStrip.header.stamp = this->get_clock()->now();
         lineStrip.ns = "path";
         lineStrip.id = 0;
@@ -108,7 +106,7 @@
 
     void Visualizer::PublishPose(double x, double y, double z, double roll, double pitch, double yaw) {
         visualization_msgs::msg::Marker marker;
-        marker.header.frame_id = "world";
+        marker.header.frame_id = "World";
         marker.header.stamp = this->get_clock()->now();
         marker.ns = "AUV";
         marker.id = 0;
@@ -155,26 +153,12 @@
 
         markerPublisher_->publish(marker);
 
-        // Create and send the transform for the frame without modifying the orientation
-        geometry_msgs::msg::TransformStamped transform;
-        transform.header.stamp = this->get_clock()->now();
-        transform.header.frame_id = "world";
-        transform.child_frame_id = "auv_base_link";
-
-        transform.transform.translation.x = x;
-        transform.transform.translation.y = y;
-        transform.transform.translation.z = z;
-        transform.transform.rotation.x = original_quaternion.x();
-        transform.transform.rotation.y = original_quaternion.y();
-        transform.transform.rotation.z = original_quaternion.z();
-        transform.transform.rotation.w = original_quaternion.w();
-
-        tfBroadcaster_->sendTransform(transform);
+        // TF for the body frame is published by the simulator.
     }
 
     void Visualizer::PublishLightSource(double x, double y, double z) {
         visualization_msgs::msg::Marker lightMarker;
-        lightMarker.header.frame_id = "world";
+        lightMarker.header.frame_id = "World";
         lightMarker.header.stamp = this->get_clock()->now();
         lightMarker.ns = "light_source";
         lightMarker.id = 1;
