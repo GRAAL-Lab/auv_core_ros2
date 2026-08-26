@@ -31,6 +31,8 @@ private:
     double serpentineAngle_{0.0};
     bool serpentineDirection_{false};
     double serpentineOffset_{4.0};
+    bool seabedAltitudeHold_{false};
+    double seabedAltitudeGoal_{0.5};
     std::vector<geometry_msgs::msg::Vector3> serpentinePolygonVertices_{
         geometry_msgs::msg::Vector3(),
         geometry_msgs::msg::Vector3(),

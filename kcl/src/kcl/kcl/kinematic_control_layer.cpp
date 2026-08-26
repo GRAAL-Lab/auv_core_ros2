@@ -41,6 +41,10 @@ KCL::KCL()
         auv_core_helper::topicnames::acceleration_actual, 1,
         std::bind(&KCL::AccelerationActualCallback, this, std::placeholders::_1));
 
+    seabedAltitudeSubscription_ = this->create_subscription<std_msgs::msg::Float64>(
+        "/auv/dvl/altitude", 1,
+        std::bind(&KCL::SeabedAltitudeCallback, this, std::placeholders::_1));
+
     // Create publishers
     poseGoalPublisher_ = this->create_publisher<geometry_msgs::msg::PoseStamped>(
         auv_core_helper::topicnames::pose_goal, 1);
@@ -81,6 +85,10 @@ void KCL::AccelerationActualCallback(const geometry_msgs::msg::Twist::SharedPtr 
     ctrlData_->accelerationActual << msg->linear.x, msg->linear.y, msg->linear.z,
                                        msg->angular.x, msg->angular.y, msg->angular.z;
 }
+
+void KCL::SeabedAltitudeCallback(const std_msgs::msg::Float64::SharedPtr msg) {
+    ctrlData_->seabedAltitudeActual = msg->data;
+}
 void KCL::HandleControlCommand(
     const std::shared_ptr<auv_core_helper::srv::ControlCommand::Request> request,
     std::shared_ptr<auv_core_helper::srv::ControlCommand::Response> response) {
@@ -117,6 +125,8 @@ void KCL::HandleControlCommand(
                     for (const auto& vertex : request->serpentine_polygon_vertices) {
                         ctrlData_->serpentinePolygonVertices.emplace_back(vertex.x, vertex.y, vertex.z);
                     }
+                    ctrlData_->seabedAltitudeHoldEnabled = request->seabed_altitude_hold;
+                    ctrlData_->seabedAltitudeGoal = request->seabed_altitude_goal;
                     break;
                 }
                 case auv_core_helper::Serpentine3D: {
@@ -133,6 +143,7 @@ void KCL::HandleControlCommand(
                     ctrlData_->curvature = request->curvature;
                     ctrlData_->dipNumPoints = request->dip_num_points;
                     ctrlData_->diveLength = request->dive_length;
+                    ctrlData_->seabedAltitudeHoldEnabled = false;
                     break;
                 }
                 default: {
@@ -195,7 +206,7 @@ void KCL::SetupTransitions() {
     fsm_.EnableTransition(States::PATH_FOLLOWING, States::HOLD, true);
     fsm_.EnableTransition(States::PATH_FOLLOWING, States::JOYSTICK, true);
     fsm_.EnableTransition(States::PATH_FOLLOWING, States::TRAJECTORY_FOLLOWING, true);
-    fsm_.SetInitState(States::HOLD);
+    fsm_.SetInitState(States::IDLE);
 
     RCLCPP_INFO(this->get_logger(), "FSM transitions set up.");
 }

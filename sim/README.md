@@ -14,7 +14,7 @@ The **Simulator** node provides a simulation framework for underwater vehicles. 
 ### Prerequisites
 To build and use the `Simulator` node, ensure the following dependencies are installed:
 
-- [auv_core_helper](https://bitbucket.org/isme_robotics/auv_core_ros2/src/main/) (helper pkg)
+- [auv_core_helper](https://github.com/GRAAL-Lab/auv_core_ros2) (helper pkg)
 - [Eigen](https://eigen.tuxfamily.org/) (for linear algebra computations)
 - [PkgConfig](https://github.com/pkgconf/pkgconf) (for configuration management)
 - [RML Library](https://bitbucket.org/isme_robotics/rml/src/master/)
@@ -22,7 +22,7 @@ To build and use the `Simulator` node, ensure the following dependencies are ins
 
 ### Building the Node
    ```bash
-   git clone https://bitbucket.org/isme_robotics/auv_core_ros2/src/main/
+   git clone git@github.com:GRAAL-Lab/auv_core_ros2.git
    colcon build --packages-select sim
    source install/setup.bash
    ```

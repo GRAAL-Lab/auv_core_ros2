@@ -67,7 +67,7 @@ After installing all dependencies, build the package as follows:
 ```bash
 # Clone the package repository into your ROS2 workspace
 cd ~/ros2_ws/src
-git clone git@bitbucket.org:isme_robotics/auv_core_ros2.git
+git clone git@github.com:GRAAL-Lab/auv_core_ros2.git
 
 # Build the package
 cd ~/ros2_ws

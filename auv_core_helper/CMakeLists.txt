@@ -102,4 +102,10 @@ install(DIRECTORY param
   OPTIONAL
 )
 
+# Install all workspace launch files with the helper package so they can be
+# invoked from any sourced ROS 2 workspace location.
+install(DIRECTORY launch/
+  DESTINATION share/${PROJECT_NAME}/launch
+)
+
 ament_package()

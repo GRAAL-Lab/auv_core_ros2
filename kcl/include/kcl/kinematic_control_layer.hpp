@@ -10,6 +10,7 @@
 #include <geometry_msgs/msg/twist.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <std_msgs/msg/string.hpp>
+#include <std_msgs/msg/float64.hpp>
 #include <nav_msgs/msg/path.hpp>
 
 // AUV-specific headers
@@ -68,6 +69,7 @@ private:
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr poseActualSubscription_;
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr velocityActualSubscription_;
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr accelerationActualSubscription_;
+    rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr seabedAltitudeSubscription_;
 
     // --------------------
     // ROS 2 Services
@@ -104,6 +106,9 @@ private:
     
     /// Callback for actual acceleration data.
     void AccelerationActualCallback(const geometry_msgs::msg::Twist::SharedPtr msg);
+
+    /// Callback for DVL altitude above the seabed.
+    void SeabedAltitudeCallback(const std_msgs::msg::Float64::SharedPtr msg);
 
     /// Service callback to handle control commands.
     void HandleControlCommand(

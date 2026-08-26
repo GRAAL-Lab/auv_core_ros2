@@ -128,6 +128,21 @@ void InterfaceNode::GatherPathDetails() {
         }
     }
 
+    if (pathChoice_ == auv_core_helper::Serpentine2D) {
+        std::cout << "Enable seabed-altitude hold? (1 for yes, 0 for no): ";
+        if (!(std::cin >> seabedAltitudeHold_)) {
+            HandleCancelRequest();
+            return;
+        }
+        if (seabedAltitudeHold_) {
+            std::cout << "Enter desired seabed altitude in metres (default is 0.5): ";
+            if (!(std::cin >> seabedAltitudeGoal_) || seabedAltitudeGoal_ <= 0.0) {
+                HandleCancelRequest();
+                return;
+            }
+        }
+    }
+
     SendPathRequest();
 }
 
@@ -157,6 +172,7 @@ void InterfaceNode::Gather2DSerpentinePathParameters() {
             return;
         }
     }
+
 }
 
 void InterfaceNode::Gather3DHelixPathParameters() {
@@ -322,6 +338,8 @@ void InterfaceNode::SendPathRequest() {
             request->serpentine_direction = serpentineDirection_;
             request->serpentine_offset = serpentineOffset_;
             request->serpentine_polygon_vertices = serpentinePolygonVertices_;
+            request->seabed_altitude_hold = seabedAltitudeHold_;
+            request->seabed_altitude_goal = seabedAltitudeGoal_;
             break;
         }
         case auv_core_helper::Serpentine3D: { // 3D Serpentine path
@@ -362,4 +380,3 @@ void InterfaceNode::SendPathRequest() {
             }
         });
 }
-

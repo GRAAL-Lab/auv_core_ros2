@@ -4,6 +4,28 @@
 PathFollowingState::PathFollowingState(fsm::FSM* fsm) : BaseAUVState(fsm, "PATH_FOLLOWING") {
 }
 
+bool PathFollowingState::IsSeabedAltitudeHoldEnabled() const noexcept {
+    return ctrlData->pathPlanningMode == auv_core_helper::Serpentine2D &&
+           ctrlData->seabedAltitudeHoldEnabled;
+}
+
+void PathFollowingState::ApplySeabedAltitudeHold() {
+    if (!std::isfinite(ctrlData->seabedAltitudeActual)) {
+        seabedAltitudeError_ = std::numeric_limits<double>::infinity();
+        ctrlData->velocityDesired(2) = 0.0;
+        static rclcpp::Clock warningClock(RCL_SYSTEM_TIME);
+        RCLCPP_WARN_THROTTLE(
+            rclcpp::get_logger("PathFollowingState"), warningClock, 5000,
+            "Seabed-altitude hold is enabled but no valid /auv/dvl/altitude feedback has been received.");
+        return;
+    }
+
+    // Positive error means the vehicle is below the requested altitude and must ascend.
+    // With the existing NED/body-Z convention this uses the same sign as position Z control.
+    seabedAltitudeError_ = ctrlData->seabedAltitudeGoal - ctrlData->seabedAltitudeActual;
+    ctrlData->velocityDesired(2) = -pidZ_.Compute(0, seabedAltitudeError_);
+}
+
 fsm::retval PathFollowingState::OnEntry() noexcept {
     RCLCPP_INFO(rclcpp::get_logger("PathFollowingState"), "Entering PATH_FOLLOWING state");
 
@@ -174,7 +196,11 @@ fsm::retval PathFollowingState::Execute() noexcept {
         // Compute body-frame linear velocities using PID
         ctrlData->velocityDesired(0) = -pidX_.Compute(0, errorBody.x());
         ctrlData->velocityDesired(1) = -pidY_.Compute(0, errorBody.y());
-        ctrlData->velocityDesired(2) = -pidZ_.Compute(0, errorBody.z());
+        if (IsSeabedAltitudeHoldEnabled()) {
+            ApplySeabedAltitudeHold();
+        } else {
+            ctrlData->velocityDesired(2) = -pidZ_.Compute(0, errorBody.z());
+        }
 
 
         // Compute body-frame angular velocities using PID
@@ -189,7 +215,10 @@ fsm::retval PathFollowingState::Execute() noexcept {
         ctrlData->velocityDesired(5) = wDesired[2];
 
         // Check if aligned
-        if (std::abs(positionXError_) < 0.1 && std::abs(positionYError_) < 0.1 && std::abs(positionZError_) < 0.1 &&
+        const bool verticalAligned = IsSeabedAltitudeHoldEnabled()
+            ? std::abs(seabedAltitudeError_) < 0.1
+            : std::abs(positionZError_) < 0.1;
+        if (std::abs(positionXError_) < 0.1 && std::abs(positionYError_) < 0.1 && verticalAligned &&
             std::abs(rollError_) < 0.1 && std::abs(yawError_) < 0.1 && std::abs(pitchError_) < 0.1) {
             RCLCPP_INFO(rclcpp::get_logger("PathFollowingState"), "Vehicle reached starting point and aligned with path direction");
             ctrlData->velocityDesired.setZero();
@@ -257,7 +286,11 @@ fsm::retval PathFollowingState::Execute() noexcept {
         // PID on body-frame linear errors
         ctrlData->velocityDesired(0) = -pidX_.Compute(0, errorBody.x());
         ctrlData->velocityDesired(1) = -pidY_.Compute(0, errorBody.y());
-        ctrlData->velocityDesired(2) = -pidZ_.Compute(0, errorBody.z());
+        if (IsSeabedAltitudeHoldEnabled()) {
+            ApplySeabedAltitudeHold();
+        } else {
+            ctrlData->velocityDesired(2) = -pidZ_.Compute(0, errorBody.z());
+        }
 
 
         // PID on angular errors for body-frame angular velocities

@@ -16,7 +16,7 @@ To build and use the `AUV Core Helper` package, ensure the following dependencie
 
 ### Building the package
    ```bash
-   git clone https://bitbucket.org/isme_robotics/auv_core_ros2/src/main/
+   git clone git@github.com:GRAAL-Lab/auv_core_ros2.git
    colcon build --packages-select auv_core_helper
    source install/setup.bash
    ```
@@ -28,6 +28,15 @@ The package defines the following message types:
 
 - `PoseStamped`: Used for pose-related information.
 - `ControlCommand`: Custom service for control commands.
+
+## Launch files
+
+The workspace launch files are installed with this package. After building and
+sourcing the workspace, run them from any directory with:
+
+```bash
+ros2 launch auv_core_helper <launch_file>.py
+```
 
 
 ## Author Details

@@ -39,6 +39,7 @@ private:
     double pitchError_ = 0.0; ///< Error in the pitch orientation.
     double crossTrackError_ = 0.0; ///< Cross-track error.
     double verticalTrackError_ = 0.0; ///< Vertical track error.
+    double seabedAltitudeError_ = std::numeric_limits<double>::infinity(); ///< Desired minus measured altitude above the seabed.
 
     // PID controllers
     ctb::DigitalPID pidX_, pidY_, pidZ_; ///< Position PIDs.
@@ -53,6 +54,9 @@ private:
 
     std::unique_ptr<dynamic_goal_alos::DynamicGoalBasedALOS> alosController_;
     double delta_;
+
+    bool IsSeabedAltitudeHoldEnabled() const noexcept;
+    void ApplySeabedAltitudeHold();
 
 public:
     /// Constructor

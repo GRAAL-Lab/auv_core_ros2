@@ -14,7 +14,7 @@ The **Dynamic Control Layer (DCL)** node provides advanced control for underwate
 ### Prerequisites
 To build and use the `Dynamic Control Layer` node, ensure the following dependencies are installed:
 
-- [auv_core_helper](https://bitbucket.org/isme_robotics/auv_core_ros2/src/main/) (helper pkg)
+- [auv_core_helper](https://github.com/GRAAL-Lab/auv_core_ros2) (helper pkg)
 - [Eigen](https://eigen.tuxfamily.org/) (for linear algebra computations)
 - [PkgConfig](https://github.com/pkgconf/pkgconf) (for configuration management)
 - [ROS 2](https://docs.ros.org/) (tested with Humble)
@@ -32,7 +32,7 @@ sudo make install
 ```
 ### Building the Node
    ```bash
-   git clone https://bitbucket.org/isme_robotics/auv_core_ros2/src/main/
+   git clone git@github.com:GRAAL-Lab/auv_core_ros2.git
    colcon build --packages-select dcl
    source install/setup.bash
    ```
