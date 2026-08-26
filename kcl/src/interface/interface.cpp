@@ -111,6 +111,14 @@ void InterfaceNode::GatherPathDetails() {
         return;
     }
 
+    if (pathChoice_ == auv_core_helper::Serpentine2D) {
+        std::cout << "Enable seabed-altitude hold? (1 for yes, 0 for no): ";
+        if (!(std::cin >> seabedAltitudeHold_)) {
+            HandleCancelRequest();
+            return;
+        }
+    }
+
     char useDefaults = 'y';
     std::cout << "Do you want to use the default path parameters? (y/n or 'c' to cancel): ";
     if (!(std::cin >> useDefaults) || (useDefaults != 'y' && useDefaults != 'n' && useDefaults != 'c')) {
@@ -128,19 +136,13 @@ void InterfaceNode::GatherPathDetails() {
         }
     }
 
-    if (pathChoice_ == auv_core_helper::Serpentine2D) {
-        std::cout << "Enable seabed-altitude hold? (1 for yes, 0 for no): ";
-        if (!(std::cin >> seabedAltitudeHold_)) {
-            HandleCancelRequest();
-            return;
-        }
-        if (seabedAltitudeHold_) {
-            std::cout << "Enter desired seabed altitude in metres (default is 0.5): ";
+    if (pathChoice_ == auv_core_helper::Serpentine2D &&
+        seabedAltitudeHold_ && useDefaults == 'n') {
+            std::cout << "Enter desired seabed altitude in metres (default is 1.0): ";
             if (!(std::cin >> seabedAltitudeGoal_) || seabedAltitudeGoal_ <= 0.0) {
                 HandleCancelRequest();
                 return;
             }
-        }
     }
 
     SendPathRequest();

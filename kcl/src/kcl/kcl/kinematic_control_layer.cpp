@@ -42,7 +42,7 @@ KCL::KCL()
         std::bind(&KCL::AccelerationActualCallback, this, std::placeholders::_1));
 
     seabedAltitudeSubscription_ = this->create_subscription<std_msgs::msg::Float64>(
-        "/auv/dvl/altitude", 1,
+        "/auv/dvl/altitude", rclcpp::SensorDataQoS(),
         std::bind(&KCL::SeabedAltitudeCallback, this, std::placeholders::_1));
 
     // Create publishers
