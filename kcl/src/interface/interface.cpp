@@ -51,7 +51,7 @@ InterfaceNode::InterfaceNode()
     spiralStartPoint_.y = 20;
     spiralStartPoint_.z = 0;
 
-    // NewRacetrack's alternating end turns extend beyond its input polygon.
+    // NewRaceTrack's alternating end turns extend beyond its input polygon.
     // Inset the long edges by half the larger diameter so the generated path stays
     // within the overall x=[0, 18], y=[0, 40] operating area.
     racetrackPolygonVertices_[0].x = 4;

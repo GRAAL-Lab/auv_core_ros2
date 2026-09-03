@@ -176,7 +176,7 @@ fsm::retval PathFollowingState::OnEntry() noexcept {
             const sisl::Path::Direction direction = ctrlData->racetrackForward
                                                         ? sisl::Path::Direction::Forward
                                                         : sisl::Path::Direction::Backward;
-            path = sisl::PathFactory::NewRacetrack(
+            path = sisl::PathFactory::NewRaceTrack(
                 ctrlData->racetrackAngle,
                 direction,
                 ctrlData->racetrackFirstDiameter,
