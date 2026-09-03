@@ -146,6 +146,31 @@ void KCL::HandleControlCommand(
                     ctrlData_->seabedAltitudeHoldEnabled = false;
                     break;
                 }
+                case auv_core_helper::Spiral2D: {
+                    ctrlData_->spiralCentrePoint = {
+                        request->spiral_centre_point.x,
+                        request->spiral_centre_point.y,
+                        request->spiral_centre_point.z};
+                    ctrlData_->spiralStartPoint = {
+                        request->spiral_start_point.x,
+                        request->spiral_start_point.y,
+                        request->spiral_start_point.z};
+                    ctrlData_->spiralRadiusOffset = request->spiral_radius_offset;
+                    ctrlData_->seabedAltitudeHoldEnabled = false;
+                    break;
+                }
+                case auv_core_helper::Racetrack2D: {
+                    ctrlData_->racetrackAngle = request->racetrack_angle;
+                    ctrlData_->racetrackForward = request->racetrack_forward;
+                    ctrlData_->racetrackFirstDiameter = request->racetrack_first_diameter;
+                    ctrlData_->racetrackSecondDiameter = request->racetrack_second_diameter;
+                    ctrlData_->racetrackPolygonVertices.clear();
+                    for (const auto& vertex : request->racetrack_polygon_vertices) {
+                        ctrlData_->racetrackPolygonVertices.emplace_back(vertex.x, vertex.y, vertex.z);
+                    }
+                    ctrlData_->seabedAltitudeHoldEnabled = false;
+                    break;
+                }
                 default: {
                     RCLCPP_ERROR(this->get_logger(), "Invalid pathPlanningMode: %d", ctrlData_->pathPlanningMode);
                     response->success = false;

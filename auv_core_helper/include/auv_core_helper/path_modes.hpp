@@ -6,7 +6,9 @@ namespace auv_core_helper {
 enum PathMode { // Changed from `enum class` to `enum`
     Serpentine2D = 1,
     Serpentine3D = 2,
-    Helix3D = 3
+    Helix3D = 3,
+    Spiral2D = 4,
+    Racetrack2D = 5
 };
 
 } // namespace auv_core_helper

@@ -78,6 +78,41 @@ fsm::retval PathFollowingState::OnEntry() noexcept {
             );
             break;
         }
+        case auv_core_helper::Spiral2D : {
+            RCLCPP_INFO(rclcpp::get_logger("PathFollowingState"), "Path Planning Spiral 2D");
+            if (ctrlData->spiralRadiusOffset <= 0.0 ||
+                (ctrlData->spiralStartPoint - ctrlData->spiralCentrePoint).norm() <= 0.0) {
+                RCLCPP_ERROR(rclcpp::get_logger("PathFollowingState"), "Invalid spiral parameters.");
+                return fsm::fail;
+            }
+            path = sisl::PathFactory::NewSpiral(
+                ctrlData->spiralCentrePoint,
+                ctrlData->spiralStartPoint,
+                ctrlData->spiralRadiusOffset
+            );
+            break;
+        }
+        case auv_core_helper::Racetrack2D : {
+            RCLCPP_INFO(rclcpp::get_logger("PathFollowingState"), "Path Planning Racetrack 2D");
+            if (ctrlData->racetrackPolygonVertices.size() < 3 ||
+                ctrlData->racetrackFirstDiameter <= 0.0 ||
+                ctrlData->racetrackSecondDiameter <= 0.0 ||
+                ctrlData->racetrackFirstDiameter == ctrlData->racetrackSecondDiameter) {
+                RCLCPP_ERROR(rclcpp::get_logger("PathFollowingState"), "Invalid racetrack parameters.");
+                return fsm::fail;
+            }
+            const sisl::Path::Direction direction = ctrlData->racetrackForward
+                                                        ? sisl::Path::Direction::Forward
+                                                        : sisl::Path::Direction::Backward;
+            path = sisl::PathFactory::NewRacetrack(
+                ctrlData->racetrackAngle,
+                direction,
+                ctrlData->racetrackFirstDiameter,
+                ctrlData->racetrackSecondDiameter,
+                ctrlData->racetrackPolygonVertices
+            );
+            break;
+        }
         default: {
             RCLCPP_ERROR(rclcpp::get_logger("PathFollowingState"), 
                  "Unexpected pathPlanningMode: %d", 

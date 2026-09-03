@@ -52,6 +52,21 @@ private:
     int helixNumQuadrants_{20};
     bool helixCounterClockwise_{false};
 
+    geometry_msgs::msg::Vector3 spiralCentrePoint_{};
+    geometry_msgs::msg::Vector3 spiralStartPoint_{};
+    double spiralRadiusOffset_{2.0};
+
+    double racetrackAngle_{0.0};
+    bool racetrackForward_{true};
+    double racetrackFirstDiameter_{8.0};
+    double racetrackSecondDiameter_{4.0};
+    std::vector<geometry_msgs::msg::Vector3> racetrackPolygonVertices_{
+        geometry_msgs::msg::Vector3(),
+        geometry_msgs::msg::Vector3(),
+        geometry_msgs::msg::Vector3(),
+        geometry_msgs::msg::Vector3()
+    };
+
     int pathChoice_;  // Determines if path is 2D or 3D
 
     // ROS communication members
@@ -69,6 +84,8 @@ private:
     void Gather3DSerpentinePathParameters();
 
     void Gather3DHelixPathParameters();
+    void Gather2DSpiralPathParameters();
+    void Gather2DRacetrackPathParameters();
     void SendPathRequest();
     void GatherPathDetails();
 

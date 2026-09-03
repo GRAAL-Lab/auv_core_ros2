@@ -8,7 +8,7 @@ float64 pitch        # pitch for TRAJECTORY_PLANNING
 float64 yaw          # yaw for TRAJECTORY_PLANNING
 float64 time_to_reach # Desired time to reach the goal in seconds for TRAJECTORY_PLANNING
 
-int32 path_planning_2d_3d # Whether the path to follow is 2D serpentine, 3D serpentine or 3D helix
+int32 path_planning_2d_3d # Path mode from auv_core_helper/path_modes.hpp
 
 # For Path Following 2D Serpentine or 3D Serpentine
 float64 serpentine_angle           # Angle of the serpentine path
@@ -29,6 +29,18 @@ geometry_msgs/Vector3 helix_axis_dir          # Direction of the helix axis
 float64 helix_frequency           # Length along the helix axis for one period of revolution
 int32 helix_num_quadrants          # Number of quadrants in the helix
 bool helix_counter_clockwise       # Direction of revolution; false=clockwise, true=counterclockwise
+
+# For Path Following 2D Spiral
+geometry_msgs/Vector3 spiral_centre_point       # Centre of the spiral
+geometry_msgs/Vector3 spiral_start_point        # Starting point on the outer radius
+float64 spiral_radius_offset                    # Radius reduction between successive half-turns
+
+# For Path Following 2D Racetrack
+float64 racetrack_angle                         # Angle of the straight sections in degrees
+bool racetrack_forward                          # Direction; true=forward, false=backward
+float64 racetrack_first_diameter                # First alternating turn diameter
+float64 racetrack_second_diameter               # Second alternating turn diameter
+geometry_msgs/Vector3[] racetrack_polygon_vertices # Polygonal operating area
 ---
 # Response part of the service
 bool success         # Whether the operation was successful

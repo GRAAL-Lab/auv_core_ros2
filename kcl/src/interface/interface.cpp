@@ -40,6 +40,35 @@ InterfaceNode::InterfaceNode()
     helixAxisDirection_.x = 0;
     helixAxisDirection_.y = 0;
     helixAxisDirection_.z = -1;
+
+    // Keep the new default paths inside the same 18 m x 40 m operating area
+    // used by the default serpentine path.
+    spiralCentrePoint_.x = 9;
+    spiralCentrePoint_.y = 20;
+    spiralCentrePoint_.z = 0;
+
+    spiralStartPoint_.x = 17;
+    spiralStartPoint_.y = 20;
+    spiralStartPoint_.z = 0;
+
+    // NewRacetrack's alternating end turns extend beyond its input polygon.
+    // Inset the long edges by half the larger diameter so the generated path stays
+    // within the overall x=[0, 18], y=[0, 40] operating area.
+    racetrackPolygonVertices_[0].x = 4;
+    racetrackPolygonVertices_[0].y = 0;
+    racetrackPolygonVertices_[0].z = 0;
+
+    racetrackPolygonVertices_[1].x = 14;
+    racetrackPolygonVertices_[1].y = 0;
+    racetrackPolygonVertices_[1].z = 0;
+
+    racetrackPolygonVertices_[2].x = 14;
+    racetrackPolygonVertices_[2].y = 40;
+    racetrackPolygonVertices_[2].z = 0;
+
+    racetrackPolygonVertices_[3].x = 4;
+    racetrackPolygonVertices_[3].y = 40;
+    racetrackPolygonVertices_[3].z = 0;
 }
 
 void InterfaceNode::StartUserInputThread() {
@@ -105,8 +134,9 @@ void InterfaceNode::ProcessStateAndSendRequest(const std::string& state) {
 }
 
 void InterfaceNode::GatherPathDetails() {
-    std::cout << "Do you want to follow a 2D or 3D path? (1 for 2D Serpentine, 2 for 3D Serpentine, 3 for 3D Helix, or 'c' to cancel): ";
-    if (!(std::cin >> pathChoice_) || (pathChoice_ < 1 || pathChoice_ > 3)) {
+    std::cout << "Choose a path (1 for 2D Serpentine, 2 for 3D Serpentine, "
+                 "3 for 3D Helix, 4 for 2D Spiral, 5 for 2D Racetrack, or 'c' to cancel): ";
+    if (!(std::cin >> pathChoice_) || (pathChoice_ < 1 || pathChoice_ > 5)) {
         HandleCancelRequest();
         return;
     }
@@ -127,12 +157,16 @@ void InterfaceNode::GatherPathDetails() {
     }
 
     if (useDefaults == 'n') {
-        if (pathChoice_ == 1) {
+        if (pathChoice_ == auv_core_helper::Serpentine2D) {
             Gather2DSerpentinePathParameters();
-        } else if (pathChoice_ == 2) {
+        } else if (pathChoice_ == auv_core_helper::Serpentine3D) {
             Gather3DSerpentinePathParameters();
-        } else if (pathChoice_ == 3) {
+        } else if (pathChoice_ == auv_core_helper::Helix3D) {
             Gather3DHelixPathParameters();
+        } else if (pathChoice_ == auv_core_helper::Spiral2D) {
+            Gather2DSpiralPathParameters();
+        } else if (pathChoice_ == auv_core_helper::Racetrack2D) {
+            Gather2DRacetrackPathParameters();
         }
     }
 
@@ -328,6 +362,57 @@ void InterfaceNode::Gather3DSerpentinePathParameters() {
         return;
     }
 }
+
+void InterfaceNode::Gather2DSpiralPathParameters() {
+    std::cout << "Enter spiral centre point (x y z): ";
+    if (!(std::cin >> spiralCentrePoint_.x >> spiralCentrePoint_.y >> spiralCentrePoint_.z)) {
+        HandleCancelRequest();
+        return;
+    }
+
+    std::cout << "Enter spiral start point (x y z): ";
+    if (!(std::cin >> spiralStartPoint_.x >> spiralStartPoint_.y >> spiralStartPoint_.z)) {
+        HandleCancelRequest();
+        return;
+    }
+
+    std::cout << "Enter spiral radius offset: ";
+    if (!(std::cin >> spiralRadiusOffset_) || spiralRadiusOffset_ <= 0.0) {
+        HandleCancelRequest();
+        return;
+    }
+}
+
+void InterfaceNode::Gather2DRacetrackPathParameters() {
+    std::cout << "Enter racetrack angle in degrees: ";
+    if (!(std::cin >> racetrackAngle_)) {
+        HandleCancelRequest();
+        return;
+    }
+
+    std::cout << "Enter racetrack direction (1 for forward, 0 for backward): ";
+    if (!(std::cin >> racetrackForward_)) {
+        HandleCancelRequest();
+        return;
+    }
+
+    std::cout << "Enter first and second racetrack diameters: ";
+    if (!(std::cin >> racetrackFirstDiameter_ >> racetrackSecondDiameter_) ||
+        racetrackFirstDiameter_ <= 0.0 || racetrackSecondDiameter_ <= 0.0 ||
+        racetrackFirstDiameter_ == racetrackSecondDiameter_) {
+        HandleCancelRequest();
+        return;
+    }
+
+    std::cout << "Enter polygon vertices (x y z) for 4 vertices or 'c' to cancel: ";
+    for (auto& vertex : racetrackPolygonVertices_) {
+        if (!(std::cin >> vertex.x >> vertex.y >> vertex.z)) {
+            HandleCancelRequest();
+            return;
+        }
+    }
+}
+
 void InterfaceNode::SendPathRequest() {
     auto request = std::make_shared<auv_core_helper::srv::ControlCommand::Request>();
     request->state = States::PATH_FOLLOWING;
@@ -362,6 +447,20 @@ void InterfaceNode::SendPathRequest() {
             request->helix_frequency = helixFrequency_;
             request->helix_num_quadrants = helixNumQuadrants_;
             request->helix_counter_clockwise = helixCounterClockwise_;
+            break;
+        }
+        case auv_core_helper::Spiral2D: { // 2D inward spiral path
+            request->spiral_centre_point = spiralCentrePoint_;
+            request->spiral_start_point = spiralStartPoint_;
+            request->spiral_radius_offset = spiralRadiusOffset_;
+            break;
+        }
+        case auv_core_helper::Racetrack2D: { // 2D racetrack path
+            request->racetrack_angle = racetrackAngle_;
+            request->racetrack_forward = racetrackForward_;
+            request->racetrack_first_diameter = racetrackFirstDiameter_;
+            request->racetrack_second_diameter = racetrackSecondDiameter_;
+            request->racetrack_polygon_vertices = racetrackPolygonVertices_;
             break;
         }
         default: {

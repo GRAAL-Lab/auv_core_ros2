@@ -36,7 +36,7 @@ struct ControlData {
     // ------------------------------
     // Path Planning Parameters
     // ------------------------------
-    int pathPlanningMode = 0; ///< Path planning mode: 2D (0) or 3D (1).
+    int pathPlanningMode = 0; ///< Selected path mode from auv_core_helper/path_modes.hpp.
 
     // 2D Serpentine Path Parameters
     double serpentineAngle = 0.0; ///< Angle for 2D serpentine path planning.
@@ -60,6 +60,18 @@ struct ControlData {
     double helixFrequency = 0.0; ///< Length along the helix axis for one revolution.
     int helixNumQuadrants = 0; ///< Number of quadrants in the helix.
     bool helixCounterClockwise = true; ///< Revolution direction: true = counter-clockwise.
+
+    // 2D Spiral Path Parameters
+    Eigen::Vector3d spiralCentrePoint = Eigen::Vector3d::Zero(); ///< Centre of the inward spiral.
+    Eigen::Vector3d spiralStartPoint = Eigen::Vector3d::Zero(); ///< Start point on the spiral's outer radius.
+    double spiralRadiusOffset = 0.0; ///< Radius reduction between successive half-turns.
+
+    // 2D Racetrack Path Parameters
+    double racetrackAngle = 0.0; ///< Angle of the racetrack straight sections in degrees.
+    bool racetrackForward = true; ///< Direction: true = forward, false = backward.
+    double racetrackFirstDiameter = 0.0; ///< First alternating turn diameter.
+    double racetrackSecondDiameter = 0.0; ///< Second alternating turn diameter.
+    std::vector<Eigen::Vector3d> racetrackPolygonVertices; ///< Polygonal operating area.
 
     // ------------------------------
     // Planned Path
