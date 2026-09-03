@@ -25,10 +25,10 @@ private:
     std::vector<Eigen::Vector3d> sampledPoints; ///< Sampled points from the path.
     bool isCurveSet_ = false; ///< Whether the path is set.
     bool isVehicleOnPathDirection_ = false; ///< Whether the vehicle is aligned with the path direction.
+    bool returningToStart_ = false; ///< Whether the completed path is returning to its entry pose.
+    Eigen::Matrix<double, 6, 1> startPose_ = Eigen::Matrix<double, 6, 1>::Zero(); ///< Pose recorded on state entry.
     double currentAbscissa_ = 0.0; ///< Current abscissa (progress along the path).
     double closestPointAbscissa_ = 0.0; ///< Abscissa of the closest point on the path.
-
-    
 
     // Error metrics
     double positionXError_ = 0.0; ///< Error in the X position.
@@ -45,18 +45,17 @@ private:
     ctb::DigitalPID pidX_, pidY_, pidZ_; ///< Position PIDs.
     ctb::DigitalPID pidRoll_, pidPitch_, pidYaw_; ///< Orientation PIDs.
 
-    
-
     // Constants
     static constexpr double MAX_PITCH = 0.610865; ///< Maximum pitch angle (±35 degrees) in radians.
     static constexpr double MIN_PITCH = -0.610865; ///< Minimum pitch angle (±35 degrees) in radians.
-
 
     std::unique_ptr<dynamic_goal_alos::DynamicGoalBasedALOS> alosController_;
     double delta_;
 
     bool IsSeabedAltitudeHoldEnabled() const noexcept;
     void ApplySeabedAltitudeHold();
+    void ApplyShallowDepthConstraint();
+    fsm::retval ExecuteReturnToStart() noexcept;
 
 public:
     /// Constructor

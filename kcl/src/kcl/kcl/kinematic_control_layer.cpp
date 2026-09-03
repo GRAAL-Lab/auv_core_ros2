@@ -45,6 +45,10 @@ KCL::KCL()
         "/auv/dvl/altitude", rclcpp::SensorDataQoS(),
         std::bind(&KCL::SeabedAltitudeCallback, this, std::placeholders::_1));
 
+    pressureSubscription_ = this->create_subscription<sensor_msgs::msg::FluidPressure>(
+        "/auv/pressure/scaled2", rclcpp::SensorDataQoS(),
+        std::bind(&KCL::PressureCallback, this, std::placeholders::_1));
+
     // Create publishers
     poseGoalPublisher_ = this->create_publisher<geometry_msgs::msg::PoseStamped>(
         auv_core_helper::topicnames::pose_goal, 1);
@@ -72,6 +76,7 @@ void KCL::PoseActualCallback(const geometry_msgs::msg::PoseStamped::SharedPtr ms
     // Update actual pose in control data
     ctrlData_->poseActual = PoseStampedMsgToEigen(*msg);
     ctrlData_->timeActual = msg->header.stamp;
+    poseActualReceived_ = true;
 }
 
 void KCL::VelocityActualCallback(const geometry_msgs::msg::Twist::SharedPtr msg) {
@@ -88,6 +93,26 @@ void KCL::AccelerationActualCallback(const geometry_msgs::msg::Twist::SharedPtr 
 
 void KCL::SeabedAltitudeCallback(const std_msgs::msg::Float64::SharedPtr msg) {
     ctrlData_->seabedAltitudeActual = msg->data;
+}
+
+void KCL::PressureCallback(const sensor_msgs::msg::FluidPressure::SharedPtr msg) {
+    if (!std::isfinite(msg->fluid_pressure) || !poseActualReceived_) {
+        return;
+    }
+
+    if (!pressureSurfaceCalibrated_) {
+        // p = p_surface + rho*g*depth and world Z = -depth. Calibrating once
+        // against the current localized Z avoids assuming sea-level air pressure.
+        pressureSurfacePa_ = msg->fluid_pressure +
+            SALT_WATER_DENSITY * GRAVITY * ctrlData_->poseActual(2);
+        pressureSurfaceCalibrated_ = true;
+        RCLCPP_INFO(this->get_logger(), "Pressure surface reference calibrated to %.2f Pa",
+                    pressureSurfacePa_);
+    }
+
+    const double depthMetres =
+        (msg->fluid_pressure - pressureSurfacePa_) / (SALT_WATER_DENSITY * GRAVITY);
+    ctrlData_->vehicleDepth = -depthMetres;
 }
 void KCL::HandleControlCommand(
     const std::shared_ptr<auv_core_helper::srv::ControlCommand::Request> request,
@@ -127,6 +152,7 @@ void KCL::HandleControlCommand(
                     }
                     ctrlData_->seabedAltitudeHoldEnabled = request->seabed_altitude_hold;
                     ctrlData_->seabedAltitudeGoal = request->seabed_altitude_goal;
+                    ctrlData_->shallowDepthLimit = request->shallow_depth_limit;
                     break;
                 }
                 case auv_core_helper::Serpentine3D: {

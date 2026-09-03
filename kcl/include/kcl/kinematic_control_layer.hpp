@@ -3,10 +3,12 @@
 // Standard library headers
 #include <memory>
 #include <string>
+#include <cmath>
 
 // ROS 2 headers
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/joy.hpp>
+#include <sensor_msgs/msg/fluid_pressure.hpp>
 #include <geometry_msgs/msg/twist.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <std_msgs/msg/string.hpp>
@@ -70,6 +72,7 @@ private:
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr velocityActualSubscription_;
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr accelerationActualSubscription_;
     rclcpp::Subscription<std_msgs::msg::Float64>::SharedPtr seabedAltitudeSubscription_;
+    rclcpp::Subscription<sensor_msgs::msg::FluidPressure>::SharedPtr pressureSubscription_;
 
     // --------------------
     // ROS 2 Services
@@ -88,6 +91,12 @@ private:
     // Shared Data
     // --------------------
     std::shared_ptr<auv::ControlData> ctrlData_; ///< Shared pointer to the control data struct.
+    bool poseActualReceived_ = false;
+    bool pressureSurfaceCalibrated_ = false;
+    double pressureSurfacePa_ = 0.0;
+
+    static constexpr double SALT_WATER_DENSITY = 1025.0; ///< kg/m^3
+    static constexpr double GRAVITY = 9.80665; ///< m/s^2
 
     // --------------------
     // Private Functions
@@ -109,6 +118,9 @@ private:
 
     /// Callback for DVL altitude above the seabed.
     void SeabedAltitudeCallback(const std_msgs::msg::Float64::SharedPtr msg);
+
+    /// Convert fluid pressure to vehicle depth in the world Z convention.
+    void PressureCallback(const sensor_msgs::msg::FluidPressure::SharedPtr msg);
 
     /// Service callback to handle control commands.
     void HandleControlCommand(
