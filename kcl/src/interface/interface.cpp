@@ -142,11 +142,22 @@ void InterfaceNode::GatherPathDetails() {
     }
 
     if (pathChoice_ == auv_core_helper::Serpentine2D) {
-        std::cout << "Enable seabed-altitude hold? (1 for yes, 0 for no): ";
-        if (!(std::cin >> seabedAltitudeHold_)) {
+        char enableAltitudeHold = 'n';
+        std::cout << "Enable seabed-altitude hold? (y for yes, n for no, c to cancel): ";
+        if (!(std::cin >> enableAltitudeHold)) {
             HandleCancelRequest();
             return;
         }
+        if (enableAltitudeHold == 'c' || enableAltitudeHold == 'C') {
+            std::cout << "Path request canceled." << std::endl;
+            return;
+        }
+        if (enableAltitudeHold != 'y' && enableAltitudeHold != 'Y' &&
+            enableAltitudeHold != 'n' && enableAltitudeHold != 'N') {
+            std::cout << "Invalid choice. Path request canceled." << std::endl;
+            return;
+        }
+        seabedAltitudeHold_ = enableAltitudeHold == 'y' || enableAltitudeHold == 'Y';
     }
 
     char useDefaults = 'y';
@@ -172,8 +183,13 @@ void InterfaceNode::GatherPathDetails() {
 
     if (pathChoice_ == auv_core_helper::Serpentine2D &&
         seabedAltitudeHold_ && useDefaults == 'n') {
-            std::cout << "Enter desired seabed altitude in metres (default is 1.0): ";
+            std::cout << "Enter desired seabed altitude in metres (default is 2.0): ";
             if (!(std::cin >> seabedAltitudeGoal_) || seabedAltitudeGoal_ <= 0.0) {
+                HandleCancelRequest();
+                return;
+            }
+            std::cout << "Enter shallowest allowed depth as negative Z (default is -0.5): ";
+            if (!(std::cin >> shallowDepthLimit_) || shallowDepthLimit_ >= 0.0) {
                 HandleCancelRequest();
                 return;
             }
@@ -427,6 +443,7 @@ void InterfaceNode::SendPathRequest() {
             request->serpentine_polygon_vertices = serpentinePolygonVertices_;
             request->seabed_altitude_hold = seabedAltitudeHold_;
             request->seabed_altitude_goal = seabedAltitudeGoal_;
+            request->shallow_depth_limit = shallowDepthLimit_;
             break;
         }
         case auv_core_helper::Serpentine3D: { // 3D Serpentine path

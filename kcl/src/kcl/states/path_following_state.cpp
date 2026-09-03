@@ -24,10 +24,82 @@ void PathFollowingState::ApplySeabedAltitudeHold() {
     // With the existing NED/body-Z convention this uses the same sign as position Z control.
     seabedAltitudeError_ = ctrlData->seabedAltitudeGoal - ctrlData->seabedAltitudeActual;
     ctrlData->velocityDesired(2) = -pidZ_.Compute(0, seabedAltitudeError_);
+    ApplyShallowDepthConstraint();
+}
+
+void PathFollowingState::ApplyShallowDepthConstraint() {
+    if (!std::isfinite(ctrlData->vehicleDepth)) {
+        // Without pressure feedback the shallow-depth safety constraint cannot
+        // be guaranteed, so inhibit vertical motion while altitude hold is active.
+        ctrlData->velocityDesired(2) = 0.0;
+        static rclcpp::Clock warningClock(RCL_SYSTEM_TIME);
+        RCLCPP_WARN_THROTTLE(
+            rclcpp::get_logger("PathFollowingState"), warningClock, 5000,
+            "Altitude hold is waiting for valid /auv/pressure/scaled2 depth feedback.");
+        return;
+    }
+
+    // Positive world/body Z velocity moves toward the surface. Reduce the
+    // permitted ascent velocity continuously as the configured ceiling is
+    // approached, and prohibit ascent at or above it.
+    if (ctrlData->velocityDesired(2) > 0.0) {
+        const double remainingDepth =
+            std::max(0.0, ctrlData->shallowDepthLimit - ctrlData->vehicleDepth);
+        constexpr double DEPTH_BARRIER_GAIN = 0.5;
+        const double maximumAscentVelocity = DEPTH_BARRIER_GAIN * remainingDepth;
+        ctrlData->velocityDesired(2) =
+            std::min(ctrlData->velocityDesired(2), maximumAscentVelocity);
+    }
+}
+
+fsm::retval PathFollowingState::ExecuteReturnToStart() noexcept {
+    ctrlData->poseGoal = startPose_;
+
+    positionXError_ = ctrlData->poseGoal(0) - ctrlData->poseActual(0);
+    positionYError_ = ctrlData->poseGoal(1) - ctrlData->poseActual(1);
+    positionZError_ = ctrlData->poseGoal(2) - ctrlData->poseActual(2);
+    rollError_ = ctb::AngleDifference(ctrlData->poseGoal(3), ctrlData->poseActual(3));
+    pitchError_ = ctb::AngleDifference(ctrlData->poseGoal(4), ctrlData->poseActual(4));
+    yawError_ = ctb::AngleDifference(ctrlData->poseGoal(5), ctrlData->poseActual(5));
+
+    rml::EulerRPY rpy(ctrlData->poseActual(3), ctrlData->poseActual(4), ctrlData->poseActual(5));
+    const Eigen::Matrix3d R = rpy.ToRotationMatrix().matrix();
+    const Eigen::Vector3d errorWorld(positionXError_, positionYError_, positionZError_);
+    const Eigen::Vector3d errorBody = R.transpose() * errorWorld;
+
+    ctrlData->velocityDesired(0) = -pidX_.Compute(0, errorBody.x());
+    ctrlData->velocityDesired(1) = -pidY_.Compute(0, errorBody.y());
+    ctrlData->velocityDesired(2) = -pidZ_.Compute(0, errorBody.z());
+    if (IsSeabedAltitudeHoldEnabled()) {
+        ApplyShallowDepthConstraint();
+    }
+
+    ctrlData->velocityDesired(3) = -pidRoll_.Compute(0, rollError_);
+    ctrlData->velocityDesired(4) = -pidPitch_.Compute(0, pitchError_);
+    ctrlData->velocityDesired(5) = -pidYaw_.Compute(0, yawError_);
+
+    const bool startPoseReached =
+        std::abs(positionXError_) < 0.1 &&
+        std::abs(positionYError_) < 0.1 &&
+        std::abs(positionZError_) < 0.1 &&
+        std::abs(rollError_) < 0.1 &&
+        std::abs(pitchError_) < 0.1 &&
+        std::abs(yawError_) < 0.1;
+
+    if (startPoseReached) {
+        RCLCPP_INFO(rclcpp::get_logger("PathFollowingState"),
+                    "Returned to the PATH_FOLLOWING starting pose; switching to HOLD");
+        ctrlData->velocityDesired.setZero();
+        fsm_->SetNextState(States::HOLD);
+    }
+
+    return fsm::ok;
 }
 
 fsm::retval PathFollowingState::OnEntry() noexcept {
     RCLCPP_INFO(rclcpp::get_logger("PathFollowingState"), "Entering PATH_FOLLOWING state");
+    startPose_ = ctrlData->poseActual;
+    returningToStart_ = false;
 
     switch (ctrlData->pathPlanningMode) {
         case auv_core_helper::Helix3D : {
@@ -195,9 +267,20 @@ fsm::retval PathFollowingState::Execute() noexcept {
         initial_time_set = true;
     }
 
+    if (returningToStart_) {
+        return ExecuteReturnToStart();
+    }
+
     if (!isVehicleOnPathDirection_) {
         Eigen::Vector3d firstPoint(poses[0].pose.position.x, poses[0].pose.position.y, poses[0].pose.position.z);
         Eigen::Vector3d secondPoint(poses[1].pose.position.x, poses[1].pose.position.y, poses[1].pose.position.z);
+
+        if (IsSeabedAltitudeHoldEnabled()) {
+            // Altitude is controlled independently from the seabed feedback. Keep
+            // the initial path-alignment goal level with the vehicle.
+            firstPoint.z() = ctrlData->poseActual(2);
+            secondPoint.z() = ctrlData->poseActual(2);
+        }
 
         Eigen::Vector3d pathDirection = (secondPoint - firstPoint).normalized();
 
@@ -270,6 +353,14 @@ fsm::retval PathFollowingState::Execute() noexcept {
         goalAbscissa = std::clamp(goalAbscissa, path->StartParameter(), path->EndParameter());
         Eigen::Vector3d nextPoint = path->At(goalAbscissa);
 
+        if (IsSeabedAltitudeHoldEnabled()) {
+            // Project the 2D guidance segment onto the vehicle's current Z plane.
+            // ALOS then reacts only to horizontal path error; the altitude PID is
+            // the sole controller of vertical motion.
+            currentPoint.z() = ctrlData->poseActual(2);
+            nextPoint.z() = ctrlData->poseActual(2);
+        }
+
         Eigen::Vector3d direction = (nextPoint - currentPoint).normalized();
         double pi_h = atan2(direction.y(), direction.x());
         double pi_p = -atan2(direction.z(), sqrt(direction.x()*direction.x() + direction.y()*direction.y()));
@@ -283,8 +374,8 @@ fsm::retval PathFollowingState::Execute() noexcept {
             currentPoint,
             delta_,
             ctrlData->dt,
-            theta_psi_d,
             psi_d,
+            theta_psi_d,
             crossTrackError_,
             verticalTrackError_);
 
@@ -341,6 +432,12 @@ fsm::retval PathFollowingState::Execute() noexcept {
         Eigen::Vector3d currentPosDot = path->Derivate(1, closestPointAbscissa_).front();
         Eigen::Vector3d goalPosDot = path->Derivate(1, goalAbscissa).front();
 
+        if (IsSeabedAltitudeHoldEnabled()) {
+            currentPosDot.z() = 0.0;
+            goalPosDot.z() = 0.0;
+            verticalTrackError_ = 0.0;
+        }
+
         Eigen::Vector3d currentDirection = currentPosDot.normalized();
         Eigen::Vector3d goalDirection = goalPosDot.normalized();
         double tangentsDifferenceNorm = (goalDirection - currentDirection).norm();
@@ -357,8 +454,16 @@ fsm::retval PathFollowingState::Execute() noexcept {
 
         currentAbscissa_ = closestPointAbscissa_;
         if (path_completed >= 99.95) {
-            RCLCPP_INFO(rclcpp::get_logger("PathFollowingState"), "Path has ended");
-            fsm_->SetNextState(States::HOLD);
+            RCLCPP_INFO(rclcpp::get_logger("PathFollowingState"),
+                        "Path has ended; returning to the PATH_FOLLOWING starting pose");
+            returningToStart_ = true;
+            ctrlData->velocityDesired.setZero();
+            pidX_.Reset();
+            pidY_.Reset();
+            pidZ_.Reset();
+            pidRoll_.Reset();
+            pidPitch_.Reset();
+            pidYaw_.Reset();
             return fsm::ok;
         }
     }
@@ -369,6 +474,7 @@ fsm::retval PathFollowingState::Execute() noexcept {
 fsm::retval PathFollowingState::OnExit() noexcept {
     ctrlData->plannedPath.poses.clear();
     isVehicleOnPathDirection_ = false;
+    returningToStart_ = false;
     closestPointAbscissa_ = 0.0;
     currentAbscissa_ = 0.0;
     alosController_.reset();

@@ -44,8 +44,10 @@ struct ControlData {
     double serpentineOffset = 0.0; ///< Offset for the serpentine path.
     std::vector<Eigen::Vector3d> serpentinePolygonVertices; ///< Polygon vertices for 2D serpentine planning.
     bool seabedAltitudeHoldEnabled = false; ///< Enable altitude hold from DVL feedback for a 2D serpentine path.
-    double seabedAltitudeGoal = 1.0; ///< Desired altitude above the seabed in metres.
+    double seabedAltitudeGoal = 2.0; ///< Desired altitude above the seabed in metres.
     double seabedAltitudeActual = std::numeric_limits<double>::quiet_NaN(); ///< Latest DVL altitude above the seabed in metres.
+    double vehicleDepth = std::numeric_limits<double>::quiet_NaN(); ///< Pressure-derived depth in world Z convention (negative underwater).
+    double shallowDepthLimit = -0.5; ///< Shallowest allowed Z depth during seabed-altitude hold.
 
     // 3D Serpentine Path Parameters
     double diveDepth = 0.0; ///< Dive depth for 3D serpentine path planning.

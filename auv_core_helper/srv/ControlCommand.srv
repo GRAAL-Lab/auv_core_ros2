@@ -17,6 +17,7 @@ float64 serpentine_offset          # Offset for the serpentine path
 geometry_msgs/Vector3[] serpentine_polygon_vertices # Polygon vertices for the serpentine path
 bool seabed_altitude_hold                # Enable seabed-altitude hold (2D serpentine only)
 float64 seabed_altitude_goal             # Desired altitude above the seabed in metres
+float64 shallow_depth_limit              # Shallowest allowed pressure-derived Z depth during altitude hold (default -0.5 m)
 float64 dive_depth                 # Dive depth for the serpentine path
 float64 curvature                  # Curvature of the serpentine path
 float64 dip_num_points             # Number of points in the dip
