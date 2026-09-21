@@ -1,0 +1,141 @@
+{
+  "campaign_id": "uwfl2_mc",
+  "master_seed": 20260903,
+  "paths": {
+    "workspace_root": "/home/attia/ros2_ws",
+    "simulator_root": "/home/attia/IsaacSim_Underwater",
+    "isaacsim_root": "/home/attia/isaac-sim-5.1",
+    "mvm_root": "/home/attia/graal_ws/marine_vehicle_models",
+    "simulator_config": "/home/attia/IsaacSim_Underwater/config/sim_params.json",
+    "slam_config": "/home/attia/ros2_ws/src/FAST_LIO_UnderWater/config/sim.yaml",
+    "output_root": "/home/attia/ros2_ws/src/auv_core_ros2/campaigns"
+  },
+  "bounds": {
+    "x_min": 0.0,
+    "x_max": 40.0,
+    "y_min": 0.0,
+    "y_max": 40.0,
+    "z_min": -1.0,
+    "z_max": 0.1
+  },
+  "path_validation": {
+    "step_m": 0.02,
+    "boundary_clearance_xy_m": 0.5,
+    "boundary_clearance_z_m": 0.01,
+    "curvature_threshold_inv_m": 0.001,
+    "vertical_tangent_threshold": 0.001,
+    "max_proposals_per_accepted_path": 1000
+  },
+  "path_distributions": {
+    "spiral_2d": {
+      "radius_m": [4.0, 12.0],
+      "radius_offset_m": [0.75, 2.5],
+      "z_m": 0.0
+    },
+    "serpentine_2d": {
+      "width_m": [8.0, 20.0],
+      "height_m": [8.0, 20.0],
+      "polygon_rotation_deg": [-180.0, 180.0],
+      "path_angle_deg": [0.0, 180.0],
+      "offset_m": [1.5, 4.0],
+      "z_m": 0.0
+    },
+    "racetrack_2d": {
+      "width_m": [12.0, 24.0],
+      "height_m": [12.0, 24.0],
+      "polygon_rotation_deg": [-180.0, 180.0],
+      "path_angle_deg": [0.0, 180.0],
+      "first_diameter_m": [3.0, 6.0],
+      "second_diameter_m": [1.0, 2.5],
+      "z_m": 0.0
+    },
+    "serpentine_3d": {
+      "width_m": [10.0, 20.0],
+      "height_m": [10.0, 20.0],
+      "polygon_rotation_deg": [-180.0, 180.0],
+      "path_angle_deg": [0.0, 180.0],
+      "offset_m": [2.0, 4.0],
+      "dip_depth_m": [0.25, 0.95],
+      "curvature": [0.7, 2.0],
+      "dip_num_points": [30, 100],
+      "dive_length_m": [0.5, 2.0],
+      "z_m": 0.0
+    }
+  },
+  "simulation": {
+    "isaac_headless": true,
+    "disable_viewport_updates": true,
+    "realtime": true,
+    "stationary_warmup_sim_s": 8.0,
+    "startup_timeout_wall_s": 180.0,
+    "mission_timeout_scale": 4.0,
+    "mission_timeout_floor_wall_s": 300.0,
+    "shutdown_grace_s": 20.0,
+    "sensor_rate_tolerance_fraction": 0.25,
+    "visualizer": true,
+    "actual_boundary_tolerance_m": 0.0,
+    "max_abs_roll_pitch_deg": 45.0
+  },
+  "recording": {
+    "storage": "mcap",
+    "storage_preset_profile": "zstd_fast",
+    "max_cache_size_bytes": 1073741824,
+    "max_bag_size_bytes": 8589934592,
+    "shutdown_grace_s": 300.0,
+    "optional_topics": [
+      "/auv/dvl"
+    ],
+    "topics": [
+      "/clock",
+      "/sonar_point_cloud",
+      "/auv/imu/data_raw",
+      "/auv/dvl",
+      "/auv/pressure/scaled2",
+      "/auv/imu/magnetic_field",
+      "/auv/pose_actual"
+    ]
+  },
+  "replay": {
+    "target_rate": 10.0,
+    "startup_delay_s": 2.0,
+    "node_startup_timeout_s": 30.0,
+    "publisher_discovery_delay_s": 2.0,
+    "wait_for_all_acked_ms": 5000,
+    "drain_timeout_s": 30.0,
+    "drain_stable_s": 5,
+    "timeout_scale": 3.0,
+    "min_timeout_wall_s": 120.0,
+    "sequential_algorithms": false
+  },
+  "metrics": {
+    "sample_rate_hz": 10.0,
+    "minimum_coverage": 0.95,
+    "maximum_interpolation_gap_s": 0.5,
+    "divergence_error_m": 20.0,
+    "failure_penalty_m": 60.0
+  },
+  "resources": {
+    "max_sim_workers": 1,
+    "max_replay_workers": 3,
+    "max_cpu_percent": 90.0,
+    "max_ram_percent": 85.0,
+    "max_gpu_percent": 92.0,
+    "max_vram_percent": 85.0,
+    "minimum_free_disk_gib": 10.0,
+    "poll_interval_s": 2.0
+  },
+  "ros": {
+    "domain_base": 40,
+    "domain_slots": 32,
+    "localhost_only": true
+  },
+  "statistics": {
+    "pilot_per_family": 25,
+    "practical_delta_rmse_m": 0.2,
+    "power": 0.9,
+    "confidence": 0.95,
+    "bootstrap_resamples": 10000,
+    "main_minimum_scenarios": 40,
+    "main_maximum_scenarios": 1000
+  }
+}
