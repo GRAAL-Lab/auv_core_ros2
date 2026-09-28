@@ -89,6 +89,7 @@ void InterfaceNode::StartUserInputThread() {
             std::cout << "3. JoyStick Control" << std::endl;
             std::cout << "4. Trajectory Following" << std::endl;
             std::cout << "5. Path Following" << std::endl;
+            std::cout << "6. Waypoint Navigation" << std::endl;
             std::cout << "Enter choice: ";
         }
 
@@ -122,6 +123,29 @@ void InterfaceNode::ProcessStateAndSendRequest(const std::string& state) {
         std::cout << "Enter desired time to reach the goal (seconds) or 'c' to cancel: ";
         if (!(std::cin >> timeToReach)) {
             HandleCancelRequest();
+            return;
+        }
+        SendServiceRequest(state, coordinates, timeToReach);
+    } else if (state == States::WAYPOINT_NAVIGATION) {
+        char choice;
+        std::cout << "Use last set goal? (y/n or c to cancel): ";
+        if (!(std::cin >> choice)) {
+            HandleCancelRequest();
+            return;
+        }
+        if (choice == 'c' || choice == 'C') {
+            return;
+        }
+        if (choice == 'n' || choice == 'N') {
+            coordinates.resize(6);
+            std::cout << "Enter waypoint (x y z in metres, roll pitch yaw in radians) or c to cancel: ";
+            if (!(std::cin >> coordinates[0] >> coordinates[1] >> coordinates[2]
+                          >> coordinates[3] >> coordinates[4] >> coordinates[5])) {
+                HandleCancelRequest();
+                return;
+            }
+        } else if (choice != 'y' && choice != 'Y') {
+            std::cout << "Invalid choice. Waypoint request canceled." << std::endl;
             return;
         }
         SendServiceRequest(state, coordinates, timeToReach);
@@ -268,8 +292,10 @@ void InterfaceNode::Gather3DHelixPathParameters() {
 void InterfaceNode::SendServiceRequest(const std::string& state, const std::vector<double>& coordinates, double timeToReach) {
     auto request = std::make_shared<auv_core_helper::srv::ControlCommand::Request>();
     request->state = state;
+    request->use_last_goal = state == States::WAYPOINT_NAVIGATION && coordinates.empty();
 
-    if (!coordinates.empty() && state == States::TRAJECTORY_FOLLOWING) {
+    if (coordinates.size() == 6 &&
+        (state == States::TRAJECTORY_FOLLOWING || state == States::WAYPOINT_NAVIGATION)) {
         request->x = coordinates[0];
         request->y = coordinates[1];
         request->z = coordinates[2];
@@ -299,6 +325,7 @@ std::string InterfaceNode::GetStateByNumber(int number) const {
     case 3: return States::JOYSTICK;
     case 4: return States::TRAJECTORY_FOLLOWING;
     case 5: return States::PATH_FOLLOWING;
+    case 6: return States::WAYPOINT_NAVIGATION;
     default: return "";
     }
 }

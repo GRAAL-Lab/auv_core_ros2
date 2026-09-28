@@ -1,5 +1,6 @@
 # Request part of the service
-string state         # State to set; can be IDLE, JOYSTICK, TRAJECTORY_PLANNING, HOLD, PATH_PLANNING
+string state         # IDLE, HOLD, JOYSTICK, TRAJECTORY_FOLLOWING, PATH_FOLLOWING, WAYPOINT_NAVIGATION
+bool use_last_goal   # WAYPOINT_NAVIGATION: reuse the current poseGoal frame
 float64 x            # x-coordinate for TRAJECTORY_PLANNING
 float64 y            # y-coordinate for TRAJECTORY_PLANNING
 float64 z            # z-coordinate for TRAJECTORY_PLANNING

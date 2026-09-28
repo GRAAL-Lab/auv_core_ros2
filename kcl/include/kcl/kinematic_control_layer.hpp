@@ -27,6 +27,7 @@
 #include "states/joystick_state.hpp"
 #include "states/trajectory_following_state.hpp"
 #include "states/path_following_state.hpp"
+#include "states/waypoint_navigation_state.hpp"
 #include "states/commands.hpp"
 
 // AUV-specific topic names
@@ -55,6 +56,7 @@ private:
     std::unique_ptr<JoystickState> joystickState_;
     std::unique_ptr<TrajectoryFollowingState> trajectoryFollowingState_;
     std::unique_ptr<PathFollowingState> pathFollowingState_;
+    std::unique_ptr<WaypointNavigationState> waypointNavigationState_;
 
     // --------------------
     // ROS 2 Publishers

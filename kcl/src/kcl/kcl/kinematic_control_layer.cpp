@@ -121,7 +121,30 @@ void KCL::HandleControlCommand(
         RCLCPP_INFO(this->get_logger(), "Received request to transition to state: %s", request->state.c_str());
 
         // Handle different control states
-        if (request->state == States::TRAJECTORY_FOLLOWING) {
+        if (request->state == States::WAYPOINT_NAVIGATION) {
+            if (!poseActualReceived_ || !ctrlData_->poseActual.allFinite()) {
+                RCLCPP_ERROR(this->get_logger(), "Waypoint navigation requires a valid actual pose");
+                response->success = false;
+                return;
+            }
+            Eigen::VectorXd goal(6);
+            if (request->use_last_goal) {
+                goal = ctrlData_->poseGoal;
+            } else {
+                goal << request->x, request->y, request->z,
+                        request->roll, request->pitch, request->yaw;
+            }
+            if (!goal.allFinite()) {
+                response->success = false;
+                return;
+            }
+            ctrlData_->poseGoal = goal;
+            if (fsm_.GetCurrentStateName() == States::WAYPOINT_NAVIGATION) {
+                // Restart alignment when a new waypoint is commanded in the same state.
+                response->success = waypointNavigationState_->OnEntry() == fsm::ok;
+                return;
+            }
+        } else if (request->state == States::TRAJECTORY_FOLLOWING) {
             ctrlData_->poseGoal << request->x, request->y, request->z, request->roll, request->pitch, request->yaw;
             ctrlData_->tpGoalTime = request->time_to_reach;
         } else if (request->state == States::PATH_FOLLOWING) {
@@ -207,11 +230,8 @@ void KCL::HandleControlCommand(
 
         // Transition to the requested state
         RCLCPP_INFO(this->get_logger(), "Transitioning to state: %s", request->state.c_str());
-        fsm_.SetNextState(request->state);
-        fsm_.SwitchState();
-
-        // Respond with success
-        response->success = true;
+        response->success = fsm_.SetNextState(request->state) == fsm::ok &&
+                            fsm_.SwitchState() == fsm::ok;
 }
 
 void KCL::SetupTransitions() {
@@ -221,6 +241,7 @@ void KCL::SetupTransitions() {
     joystickState_ = std::make_unique<JoystickState>(&fsm_);
     trajectoryFollowingState_ = std::make_unique<TrajectoryFollowingState>(&fsm_);
     pathFollowingState_ = std::make_unique<PathFollowingState>(&fsm_);
+    waypointNavigationState_ = std::make_unique<WaypointNavigationState>(&fsm_);
 
     // Share control data with states
     idleState_->ctrlData = ctrlData_;
@@ -228,6 +249,7 @@ void KCL::SetupTransitions() {
     joystickState_->ctrlData = ctrlData_;
     trajectoryFollowingState_->ctrlData = ctrlData_;
     pathFollowingState_->ctrlData = ctrlData_;
+    waypointNavigationState_->ctrlData = ctrlData_;
 
     // Add states and enable transitions
     fsm_.AddState(States::IDLE, idleState_.get());
@@ -235,6 +257,7 @@ void KCL::SetupTransitions() {
     fsm_.AddState(States::JOYSTICK, joystickState_.get());
     fsm_.AddState(States::TRAJECTORY_FOLLOWING, trajectoryFollowingState_.get());
     fsm_.AddState(States::PATH_FOLLOWING, pathFollowingState_.get());
+    fsm_.AddState(States::WAYPOINT_NAVIGATION, waypointNavigationState_.get());
 
     // Enable transitions
     fsm_.EnableTransition(States::IDLE, States::HOLD, true);
@@ -257,6 +280,16 @@ void KCL::SetupTransitions() {
     fsm_.EnableTransition(States::PATH_FOLLOWING, States::HOLD, true);
     fsm_.EnableTransition(States::PATH_FOLLOWING, States::JOYSTICK, true);
     fsm_.EnableTransition(States::PATH_FOLLOWING, States::TRAJECTORY_FOLLOWING, true);
+    fsm_.EnableTransition(States::IDLE, States::WAYPOINT_NAVIGATION, true);
+    fsm_.EnableTransition(States::HOLD, States::WAYPOINT_NAVIGATION, true);
+    fsm_.EnableTransition(States::JOYSTICK, States::WAYPOINT_NAVIGATION, true);
+    fsm_.EnableTransition(States::TRAJECTORY_FOLLOWING, States::WAYPOINT_NAVIGATION, true);
+    fsm_.EnableTransition(States::PATH_FOLLOWING, States::WAYPOINT_NAVIGATION, true);
+    fsm_.EnableTransition(States::WAYPOINT_NAVIGATION, States::IDLE, true);
+    fsm_.EnableTransition(States::WAYPOINT_NAVIGATION, States::HOLD, true);
+    fsm_.EnableTransition(States::WAYPOINT_NAVIGATION, States::JOYSTICK, true);
+    fsm_.EnableTransition(States::WAYPOINT_NAVIGATION, States::TRAJECTORY_FOLLOWING, true);
+    fsm_.EnableTransition(States::WAYPOINT_NAVIGATION, States::PATH_FOLLOWING, true);
     fsm_.SetInitState(States::IDLE);
 
     RCLCPP_INFO(this->get_logger(), "FSM transitions set up.");

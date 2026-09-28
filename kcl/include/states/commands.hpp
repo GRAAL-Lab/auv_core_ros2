@@ -10,6 +10,7 @@ namespace States {
     constexpr char JOYSTICK[] = "JOYSTICK"; ///< AUV is being controlled via joystick.
     constexpr char TRAJECTORY_FOLLOWING[] = "TRAJECTORY_FOLLOWING"; ///< AUV is following a predefined trajectory.
     constexpr char PATH_FOLLOWING[] = "PATH_FOLLOWING"; ///< AUV is following a planned path.
+    constexpr char WAYPOINT_NAVIGATION[] = "WAYPOINT_NAVIGATION";
 }
 
 #endif // AUV_STATES_COMMANDS_HPP

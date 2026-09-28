@@ -72,6 +72,7 @@ add_library(states_lib STATIC
   src/kcl/states/trajectory_following_state.cpp
   src/kcl/states/path_following_state.cpp
   src/kcl/states/hold_state.cpp
+  src/kcl/states/waypoint_navigation_state.cpp
 )
 target_include_directories(states_lib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -110,6 +111,7 @@ add_executable(kinematic_control_layer_node
     src/kcl/states/trajectory_following_state.cpp
     src/kcl/states/path_following_state.cpp
     src/kcl/states/hold_state.cpp
+    src/kcl/states/waypoint_navigation_state.cpp
     src/kcl/kcl/kinematic_control_layer.cpp
 )
 add_executable(interface_node
@@ -165,6 +167,9 @@ install(DIRECTORY
 )
 
 if(BUILD_TESTING)
+  add_executable(waypoint_navigation_test test/waypoint_navigation_test.cpp)
+  target_link_libraries(waypoint_navigation_test states_lib ${FSM_LIBRARY})
+  add_test(NAME waypoint_navigation COMMAND waypoint_navigation_test)
   find_package(ament_lint_auto REQUIRED)
   ament_lint_auto_find_test_dependencies()
 endif()
