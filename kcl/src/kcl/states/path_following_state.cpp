@@ -52,54 +52,8 @@ void PathFollowingState::ApplyShallowDepthConstraint() {
     }
 }
 
-fsm::retval PathFollowingState::ExecuteReturnToStart() noexcept {
-    ctrlData->poseGoal = startPose_;
-
-    positionXError_ = ctrlData->poseGoal(0) - ctrlData->poseActual(0);
-    positionYError_ = ctrlData->poseGoal(1) - ctrlData->poseActual(1);
-    positionZError_ = ctrlData->poseGoal(2) - ctrlData->poseActual(2);
-    rollError_ = ctb::AngleDifference(ctrlData->poseGoal(3), ctrlData->poseActual(3));
-    pitchError_ = ctb::AngleDifference(ctrlData->poseGoal(4), ctrlData->poseActual(4));
-    yawError_ = ctb::AngleDifference(ctrlData->poseGoal(5), ctrlData->poseActual(5));
-
-    rml::EulerRPY rpy(ctrlData->poseActual(3), ctrlData->poseActual(4), ctrlData->poseActual(5));
-    const Eigen::Matrix3d R = rpy.ToRotationMatrix().matrix();
-    const Eigen::Vector3d errorWorld(positionXError_, positionYError_, positionZError_);
-    const Eigen::Vector3d errorBody = R.transpose() * errorWorld;
-
-    ctrlData->velocityDesired(0) = -pidX_.Compute(0, errorBody.x());
-    ctrlData->velocityDesired(1) = -pidY_.Compute(0, errorBody.y());
-    ctrlData->velocityDesired(2) = -pidZ_.Compute(0, errorBody.z());
-    if (IsSeabedAltitudeHoldEnabled()) {
-        ApplyShallowDepthConstraint();
-    }
-
-    ctrlData->velocityDesired(3) = -pidRoll_.Compute(0, rollError_);
-    ctrlData->velocityDesired(4) = -pidPitch_.Compute(0, pitchError_);
-    ctrlData->velocityDesired(5) = -pidYaw_.Compute(0, yawError_);
-
-    const bool startPoseReached =
-        std::abs(positionXError_) < 0.1 &&
-        std::abs(positionYError_) < 0.1 &&
-        std::abs(positionZError_) < 0.1 &&
-        std::abs(rollError_) < 0.1 &&
-        std::abs(pitchError_) < 0.1 &&
-        std::abs(yawError_) < 0.1;
-
-    if (startPoseReached) {
-        RCLCPP_INFO(rclcpp::get_logger("PathFollowingState"),
-                    "Returned to the PATH_FOLLOWING starting pose; switching to HOLD");
-        ctrlData->velocityDesired.setZero();
-        fsm_->SetNextState(States::HOLD);
-    }
-
-    return fsm::ok;
-}
-
 fsm::retval PathFollowingState::OnEntry() noexcept {
     RCLCPP_INFO(rclcpp::get_logger("PathFollowingState"), "Entering PATH_FOLLOWING state");
-    startPose_ = ctrlData->poseActual;
-    returningToStart_ = false;
 
     switch (ctrlData->pathPlanningMode) {
         case auv_core_helper::Helix3D : {
@@ -265,10 +219,6 @@ fsm::retval PathFollowingState::Execute() noexcept {
     if (!initial_time_set) {
         previous_time = ctrlData->timeActual;
         initial_time_set = true;
-    }
-
-    if (returningToStart_) {
-        return ExecuteReturnToStart();
     }
 
     if (!isVehicleOnPathDirection_) {
@@ -455,15 +405,9 @@ fsm::retval PathFollowingState::Execute() noexcept {
         currentAbscissa_ = closestPointAbscissa_;
         if (path_completed >= 99.95) {
             RCLCPP_INFO(rclcpp::get_logger("PathFollowingState"),
-                        "Path has ended; returning to the PATH_FOLLOWING starting pose");
-            returningToStart_ = true;
+                        "Path has ended; switching to HOLD at the current pose");
             ctrlData->velocityDesired.setZero();
-            pidX_.Reset();
-            pidY_.Reset();
-            pidZ_.Reset();
-            pidRoll_.Reset();
-            pidPitch_.Reset();
-            pidYaw_.Reset();
+            fsm_->SetNextState(States::HOLD);
             return fsm::ok;
         }
     }
@@ -474,7 +418,6 @@ fsm::retval PathFollowingState::Execute() noexcept {
 fsm::retval PathFollowingState::OnExit() noexcept {
     ctrlData->plannedPath.poses.clear();
     isVehicleOnPathDirection_ = false;
-    returningToStart_ = false;
     closestPointAbscissa_ = 0.0;
     currentAbscissa_ = 0.0;
     alosController_.reset();

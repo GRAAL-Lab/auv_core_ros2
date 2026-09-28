@@ -25,8 +25,6 @@ private:
     std::vector<Eigen::Vector3d> sampledPoints; ///< Sampled points from the path.
     bool isCurveSet_ = false; ///< Whether the path is set.
     bool isVehicleOnPathDirection_ = false; ///< Whether the vehicle is aligned with the path direction.
-    bool returningToStart_ = false; ///< Whether the completed path is returning to its entry pose.
-    Eigen::Matrix<double, 6, 1> startPose_ = Eigen::Matrix<double, 6, 1>::Zero(); ///< Pose recorded on state entry.
     double currentAbscissa_ = 0.0; ///< Current abscissa (progress along the path).
     double closestPointAbscissa_ = 0.0; ///< Abscissa of the closest point on the path.
 
@@ -55,7 +53,6 @@ private:
     bool IsSeabedAltitudeHoldEnabled() const noexcept;
     void ApplySeabedAltitudeHold();
     void ApplyShallowDepthConstraint();
-    fsm::retval ExecuteReturnToStart() noexcept;
 
 public:
     /// Constructor
