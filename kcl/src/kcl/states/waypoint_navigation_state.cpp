@@ -17,6 +17,14 @@ fsm::retval WaypointNavigationState::OnEntry() noexcept {
     }
 
     alignmentPosition_ = ctrlData->poseActual.head<3>();
+    if (!ctrlData->waypointUseHeading) {
+        // Automatic mode chooses the final heading once; transit must not overwrite it.
+        Eigen::Vector3d offset = ctrlData->poseGoal.head<3>() - ctrlData->poseActual.head<3>();
+        ctrlData->poseGoal(5) = ctrlData->poseActual(5);
+        if (offset.head<2>().norm() > POSITION_TOLERANCE) {
+            ctrlData->poseGoal(5) = std::atan2(offset.y(), offset.x());
+        }
+    }
     phase_ = Phase::Align;
     ctrlData->velocityDesired.setZero();
 
@@ -54,18 +62,31 @@ fsm::retval WaypointNavigationState::Execute() noexcept {
 
     Eigen::Vector3d offset = ctrlData->poseGoal.head<3>() - ctrlData->poseActual.head<3>();
     double horizontalDistance = offset.head<2>().norm();
-    double heading = ctrlData->poseGoal(5);
-    if (horizontalDistance > POSITION_TOLERANCE) {
-        heading = std::atan2(offset.y(), offset.x());
+    bool positionReached = offset.norm() <= POSITION_TOLERANCE;
+    if (ctrlData->seabedAltitudeHoldEnabled) {
+        positionReached = horizontalDistance <= POSITION_TOLERANCE &&
+            std::isfinite(ctrlData->seabedAltitudeActual) && ctrlData->seabedAltitudeActual > 0.0 &&
+            std::isfinite(ctrlData->vehicleDepth) &&
+            std::abs(ctrlData->seabedAltitudeGoal - ctrlData->seabedAltitudeActual) <= POSITION_TOLERANCE;
     }
-    double headingError = ctb::AngleDifference(heading, ctrlData->poseActual(5));
-
-    if (phase_ != Phase::HoldGoal && offset.norm() <= POSITION_TOLERANCE) {
+    if (phase_ != Phase::HoldGoal && positionReached) {
         phase_ = Phase::HoldGoal;
         ResetPIDControllers();
         RCLCPP_INFO(rclcpp::get_logger("WaypointNavigationState"),
                     "Waypoint reached; maintaining the requested final pose");
-    } else if (phase_ == Phase::Navigate && std::abs(headingError) > REALIGN_TOLERANCE) {
+    }
+
+    // Face the waypoint during transit, then use the desired goal heading on arrival.
+    double heading = ctrlData->poseGoal(5);
+    if (phase_ != Phase::HoldGoal) {
+        heading = ctrlData->poseActual(5);
+        if (horizontalDistance > POSITION_TOLERANCE) {
+            heading = std::atan2(offset.y(), offset.x());
+        }
+    }
+    double headingError = ctb::AngleDifference(heading, ctrlData->poseActual(5));
+
+    if (phase_ == Phase::Navigate && std::abs(headingError) > REALIGN_TOLERANCE) {
         phase_ = Phase::Align;
         alignmentPosition_ = ctrlData->poseActual.head<3>();
         ResetPIDControllers();
@@ -81,6 +102,11 @@ fsm::retval WaypointNavigationState::Execute() noexcept {
     if (phase_ == Phase::Align) {
         positionTarget = alignmentPosition_;
     }
+    if (ctrlData->seabedAltitudeHoldEnabled) {
+        // DVL altitude replaces waypoint Z, as in 2D path following.
+        positionTarget(2) = ctrlData->poseActual(2);
+        ctrlData->poseGoal(2) = ctrlData->poseActual(2);
+    }
 
     // Calculate position and orientation errors in the World frame
     positionXError_ = positionTarget(0) - ctrlData->poseActual(0);
@@ -89,9 +115,6 @@ fsm::retval WaypointNavigationState::Execute() noexcept {
     rollError_ = ctb::AngleDifference(ctrlData->poseGoal(3), ctrlData->poseActual(3));
     pitchError_ = ctb::AngleDifference(ctrlData->poseGoal(4), ctrlData->poseActual(4));
     yawError_ = headingError;
-    if (phase_ == Phase::HoldGoal) {
-        yawError_ = ctb::AngleDifference(ctrlData->poseGoal(5), ctrlData->poseActual(5));
-    }
 
     // Convert linear position errors to body frame
     rml::EulerRPY rpy(ctrlData->poseActual(3), ctrlData->poseActual(4), ctrlData->poseActual(5));
@@ -102,7 +125,11 @@ fsm::retval WaypointNavigationState::Execute() noexcept {
     // Compute corrective velocities using PID controllers on body-frame errors
     ctrlData->velocityDesired(0) = -pidX_.Compute(0, errorBody(0));
     ctrlData->velocityDesired(1) = -pidY_.Compute(0, errorBody(1));
-    ctrlData->velocityDesired(2) = -pidZ_.Compute(0, errorBody(2));
+    if (ctrlData->seabedAltitudeHoldEnabled) {
+        ApplySeabedAltitudeHold();
+    } else {
+        ctrlData->velocityDesired(2) = -pidZ_.Compute(0, errorBody(2));
+    }
 
     // Compute desired body angular velocities
     Eigen::Vector3d wDesired = Eigen::Vector3d::Zero();
@@ -133,4 +160,40 @@ void WaypointNavigationState::ResetPIDControllers() noexcept {
     pidRoll_.Reset();
     pidPitch_.Reset();
     pidYaw_.Reset();
+}
+
+void WaypointNavigationState::ApplySeabedAltitudeHold() {
+    if (!std::isfinite(ctrlData->seabedAltitudeActual) || ctrlData->seabedAltitudeActual <= 0.0) {
+        seabedAltitudeError_ = std::numeric_limits<double>::infinity();
+        ctrlData->velocityDesired(2) = 0.0;
+        static rclcpp::Clock warningClock(RCL_SYSTEM_TIME);
+        RCLCPP_WARN_THROTTLE(
+            rclcpp::get_logger("WaypointNavigationState"), warningClock, 5000,
+            "Seabed-altitude hold is waiting for valid /auv/dvl/altitude feedback.");
+        return;
+    }
+
+    // Use the same altitude error and PID sign as path following.
+    seabedAltitudeError_ = ctrlData->seabedAltitudeGoal - ctrlData->seabedAltitudeActual;
+    ctrlData->velocityDesired(2) = -pidZ_.Compute(0, seabedAltitudeError_);
+    ApplyShallowDepthConstraint();
+}
+
+void WaypointNavigationState::ApplyShallowDepthConstraint() {
+    if (!std::isfinite(ctrlData->vehicleDepth)) {
+        ctrlData->velocityDesired(2) = 0.0;
+        static rclcpp::Clock warningClock(RCL_SYSTEM_TIME);
+        RCLCPP_WARN_THROTTLE(
+            rclcpp::get_logger("WaypointNavigationState"), warningClock, 5000,
+            "Altitude hold is waiting for valid /auv/pressure/scaled2 depth feedback.");
+        return;
+    }
+
+    // Reduce ascent near the depth ceiling and prohibit it at or above the limit.
+    if (ctrlData->velocityDesired(2) > 0.0) {
+        double remainingDepth = std::max(0.0, ctrlData->shallowDepthLimit - ctrlData->vehicleDepth);
+        constexpr double DEPTH_BARRIER_GAIN = 0.5;
+        double maximumAscentVelocity = DEPTH_BARRIER_GAIN * remainingDepth;
+        ctrlData->velocityDesired(2) = std::min(ctrlData->velocityDesired(2), maximumAscentVelocity);
+    }
 }

@@ -128,17 +128,18 @@ void KCL::HandleControlCommand(
                 return;
             }
             Eigen::VectorXd goal(6);
-            if (request->use_last_goal) {
-                goal = ctrlData_->poseGoal;
-            } else {
-                goal << request->x, request->y, request->z,
-                        request->roll, request->pitch, request->yaw;
-            }
-            if (!goal.allFinite()) {
+            goal << request->x, request->y, request->z, request->roll, request->pitch, request->yaw;
+            if (!goal.allFinite() || (request->seabed_altitude_hold &&
+                (!std::isfinite(request->seabed_altitude_goal) || request->seabed_altitude_goal <= 0.0 ||
+                 !std::isfinite(request->shallow_depth_limit) || request->shallow_depth_limit >= 0.0))) {
                 response->success = false;
                 return;
             }
             ctrlData_->poseGoal = goal;
+            ctrlData_->waypointUseHeading = request->waypoint_use_heading;
+            ctrlData_->seabedAltitudeHoldEnabled = request->seabed_altitude_hold;
+            ctrlData_->seabedAltitudeGoal = request->seabed_altitude_goal;
+            ctrlData_->shallowDepthLimit = request->shallow_depth_limit;
             if (fsm_.GetCurrentStateName() == States::WAYPOINT_NAVIGATION) {
                 // Restart alignment when a new waypoint is commanded in the same state.
                 response->success = waypointNavigationState_->OnEntry() == fsm::ok;

@@ -77,7 +77,7 @@ private:
     // Private member functions
     void ProcessStateAndSendRequest(const std::string& state);
     std::string GetStateByNumber(int stateNumber) const;
-    void SendServiceRequest(const std::string& state, const std::vector<double>& coordinates, double timeToReach);
+    void SendServiceRequest(const std::string& state, const std::vector<double>& coordinates, double timeToReach, bool useHeading = false);
     void StateCallback(const std_msgs::msg::String::SharedPtr msg);
     void StartUserInputThread();
 

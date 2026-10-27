@@ -2,6 +2,7 @@
 
 #include "states/base_auv_state.hpp"
 #include "ctrl_toolbox/pid/DigitalPID.h"
+#include <limits>
 
 /// Aligns the AUV heading before navigating to the shared goal pose using PID control.
 class WaypointNavigationState : public BaseAUVState {
@@ -25,6 +26,7 @@ private:
     double rollError_ = 0.0;      ///< Orientation error in roll.
     double pitchError_ = 0.0;     ///< Orientation error in pitch.
     double yawError_ = 0.0;       ///< Orientation error in yaw.
+    double seabedAltitudeError_ = std::numeric_limits<double>::infinity(); ///< Desired minus measured seabed altitude.
 
     // --------------------------
     // Navigation Parameters
@@ -37,6 +39,8 @@ private:
     static constexpr double POSITION_TOLERANCE = 0.15; ///< Waypoint arrival tolerance in metres.
 
     void ResetPIDControllers() noexcept;
+    void ApplySeabedAltitudeHold();
+    void ApplyShallowDepthConstraint();
 
 public:
     /// Constructor

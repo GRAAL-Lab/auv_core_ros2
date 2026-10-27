@@ -1,4 +1,5 @@
 #include "interface/interface.hpp"
+#include <cmath>
 
 InterfaceNode::InterfaceNode()
     : Node("interface_node"), isStateInitialized_(false), pathChoice_(0) {
@@ -127,28 +128,54 @@ void InterfaceNode::ProcessStateAndSendRequest(const std::string& state) {
         }
         SendServiceRequest(state, coordinates, timeToReach);
     } else if (state == States::WAYPOINT_NAVIGATION) {
-        char choice;
-        std::cout << "Use last set goal? (y/n or c to cancel): ";
-        if (!(std::cin >> choice)) {
+        coordinates.resize(6);
+        std::cout << "Enter waypoint (x y z in metres, roll pitch in radians) or c to cancel: ";
+        if (!(std::cin >> coordinates[0] >> coordinates[1] >> coordinates[2]
+                      >> coordinates[3] >> coordinates[4])) {
             HandleCancelRequest();
             return;
         }
-        if (choice == 'c' || choice == 'C') {
+        int headingChoice;
+        std::cout << "Choose arrival heading (1 for automatic waypoint bearing, 2 to choose heading) or c to cancel: ";
+        if (!(std::cin >> headingChoice) || (headingChoice != 1 && headingChoice != 2)) {
+            HandleCancelRequest();
             return;
         }
-        if (choice == 'n' || choice == 'N') {
-            coordinates.resize(6);
-            std::cout << "Enter waypoint (x y z in metres, roll pitch yaw in radians) or c to cancel: ";
-            if (!(std::cin >> coordinates[0] >> coordinates[1] >> coordinates[2]
-                          >> coordinates[3] >> coordinates[4] >> coordinates[5])) {
+        if (headingChoice == 2) {
+            std::cout << "Enter desired arrival heading (yaw in radians) or c to cancel: ";
+            if (!(std::cin >> coordinates[5])) {
                 HandleCancelRequest();
                 return;
             }
-        } else if (choice != 'y' && choice != 'Y') {
+        }
+        char enableAltitudeHold;
+        std::cout << "Enable seabed-altitude hold and shallow-depth protection? (y/n or c to cancel): ";
+        if (!(std::cin >> enableAltitudeHold)) {
+            HandleCancelRequest();
+            return;
+        }
+        if (enableAltitudeHold == 'c' || enableAltitudeHold == 'C') {
+            return;
+        }
+        if (enableAltitudeHold != 'y' && enableAltitudeHold != 'Y' &&
+            enableAltitudeHold != 'n' && enableAltitudeHold != 'N') {
             std::cout << "Invalid choice. Waypoint request canceled." << std::endl;
             return;
         }
-        SendServiceRequest(state, coordinates, timeToReach);
+        seabedAltitudeHold_ = enableAltitudeHold == 'y' || enableAltitudeHold == 'Y';
+        if (seabedAltitudeHold_) {
+            std::cout << "Enter desired seabed altitude in metres: ";
+            if (!(std::cin >> seabedAltitudeGoal_) || !std::isfinite(seabedAltitudeGoal_) || seabedAltitudeGoal_ <= 0.0) {
+                HandleCancelRequest();
+                return;
+            }
+            std::cout << "Enter shallowest allowed depth as negative Z: ";
+            if (!(std::cin >> shallowDepthLimit_) || !std::isfinite(shallowDepthLimit_) || shallowDepthLimit_ >= 0.0) {
+                HandleCancelRequest();
+                return;
+            }
+        }
+        SendServiceRequest(state, coordinates, timeToReach, headingChoice == 2);
     } else if (state == States::PATH_FOLLOWING) {
         GatherPathDetails();
     }
@@ -289,10 +316,15 @@ void InterfaceNode::Gather3DHelixPathParameters() {
     }
 }
 
-void InterfaceNode::SendServiceRequest(const std::string& state, const std::vector<double>& coordinates, double timeToReach) {
+void InterfaceNode::SendServiceRequest(const std::string& state, const std::vector<double>& coordinates, double timeToReach, bool useHeading) {
     auto request = std::make_shared<auv_core_helper::srv::ControlCommand::Request>();
     request->state = state;
-    request->use_last_goal = state == States::WAYPOINT_NAVIGATION && coordinates.empty();
+    request->waypoint_use_heading = state == States::WAYPOINT_NAVIGATION && useHeading;
+    if (state == States::WAYPOINT_NAVIGATION) {
+        request->seabed_altitude_hold = seabedAltitudeHold_;
+        request->seabed_altitude_goal = seabedAltitudeGoal_;
+        request->shallow_depth_limit = shallowDepthLimit_;
+    }
 
     if (coordinates.size() == 6 &&
         (state == States::TRAJECTORY_FOLLOWING || state == States::WAYPOINT_NAVIGATION)) {

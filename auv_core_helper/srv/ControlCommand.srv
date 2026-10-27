@@ -1,6 +1,6 @@
 # Request part of the service
 string state         # IDLE, HOLD, JOYSTICK, TRAJECTORY_FOLLOWING, PATH_FOLLOWING, WAYPOINT_NAVIGATION
-bool use_last_goal   # WAYPOINT_NAVIGATION: reuse the current poseGoal frame
+bool waypoint_use_heading # WAYPOINT_NAVIGATION: true uses yaw at arrival; false selects the initial waypoint bearing
 float64 x            # x-coordinate for TRAJECTORY_PLANNING
 float64 y            # y-coordinate for TRAJECTORY_PLANNING
 float64 z            # z-coordinate for TRAJECTORY_PLANNING
@@ -16,7 +16,7 @@ float64 serpentine_angle           # Angle of the serpentine path
 bool serpentine_direction          # Direction of the serpentine path; true=FORWARD, false=BACKWARD
 float64 serpentine_offset          # Offset for the serpentine path
 geometry_msgs/Vector3[] serpentine_polygon_vertices # Polygon vertices for the serpentine path
-bool seabed_altitude_hold                # Enable seabed-altitude hold (2D serpentine only)
+bool seabed_altitude_hold                # Enable DVL altitude hold with pressure depth ceiling (2D serpentine or waypoint)
 float64 seabed_altitude_goal             # Desired altitude above the seabed in metres
 float64 shallow_depth_limit              # Shallowest allowed pressure-derived Z depth during altitude hold (default -0.5 m)
 float64 dive_depth                 # Dive depth for the serpentine path

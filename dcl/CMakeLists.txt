@@ -37,6 +37,8 @@ set(CMAKE_FIND_LIBRARY_SUFFIXES .so .a)
 
 # Find qpOASES shared library
 find_library(QPOASES_LIBRARY NAMES qpOASES REQUIRED)
+# qpOASES uses LAPACK routines (and LAPACK brings its BLAS dependency).
+find_package(LAPACK REQUIRED)
 
 
 # Add files in the tree of "Projects" view in QtCreator
@@ -101,6 +103,7 @@ foreach(target dynamic_control_layer_node)
     ${SIX_DOF_MODEL_LIBRARY}
     ${QPOASES_LIBRARY}
     ${LIBCONFIGPP_LIBRARIES}     # Link against libconfig++
+    ${LAPACK_LIBRARIES}
   )
 endforeach()
 

@@ -29,6 +29,7 @@ struct ControlData {
     Eigen::VectorXd velocityDesired = Eigen::VectorXd(6); ///< Desired linear and angular velocities.
     geometry_msgs::msg::Twist joystickVelocityDesired; ///< Joystick-derived velocity commands.
     Eigen::VectorXd poseGoal = Eigen::VectorXd(6); ///< Desired pose goal.
+    bool waypointUseHeading = false; ///< Use the requested final yaw instead of the initial waypoint bearing.
     double tpGoalTime = 0.0; ///< Time to reach the trajectory planning goal.
     std::shared_ptr<sensor_msgs::msg::Joy> joystickMsg;
 
@@ -43,7 +44,7 @@ struct ControlData {
     bool serpentineDirection = true; ///< Direction: true = forward, false = backward.
     double serpentineOffset = 0.0; ///< Offset for the serpentine path.
     std::vector<Eigen::Vector3d> serpentinePolygonVertices; ///< Polygon vertices for 2D serpentine planning.
-    bool seabedAltitudeHoldEnabled = false; ///< Enable altitude hold from DVL feedback for a 2D serpentine path.
+    bool seabedAltitudeHoldEnabled = false; ///< Enable DVL altitude hold for a 2D serpentine path or waypoint.
     double seabedAltitudeGoal = 2.0; ///< Desired altitude above the seabed in metres.
     double seabedAltitudeActual = std::numeric_limits<double>::quiet_NaN(); ///< Latest DVL altitude above the seabed in metres.
     double vehicleDepth = std::numeric_limits<double>::quiet_NaN(); ///< Pressure-derived depth in world Z convention (negative underwater).
